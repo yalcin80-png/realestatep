@@ -665,9 +665,15 @@ bool SahibindenImporter::ExtractContactFromHtml(const std::wstring& html, Sahibi
 }
 
 bool SahibindenImporter::ExtractFeaturesFromHtml(const std::wstring& html, SahibindenListingPayload& ioPayload) {
+    // Constants for HTML parsing
+    const size_t MAX_SECTION_SEARCH_LENGTH = 2000;  // Maximum characters to search after section heading
+    const size_t MAX_LIST_CONTENT_LENGTH = 1500;    // Maximum characters to parse within a list
+    
+    // Regex pattern to match selected list items (e.g., <li class="selected">Feature Name</li>)
+    static const std::wregex SELECTED_ITEM_REGEX(L"<li[^>]*class=\"[^\"]*selected[^\"]*\"[^>]*>\\s*([^<]+)\\s*</li>");
+    
     // Extract all selected features first (for backward compatibility)
-    std::wregex reLi(L"<li[^>]*class=\"[^\"]*selected[^\"]*\"[^>]*>\\s*([^<]+)\\s*</li>");
-    auto begin = std::wsregex_iterator(html.begin(), html.end(), reLi);
+    auto begin = std::wsregex_iterator(html.begin(), html.end(), SELECTED_ITEM_REGEX);
     auto end = std::wsregex_iterator();
     CString features;
     
@@ -707,7 +713,7 @@ bool SahibindenImporter::ExtractFeaturesFromHtml(const std::wstring& html, Sahib
                 if (std::regex_search(html, match, reSection)) {
                     // Find the position after the heading
                     size_t pos = match.position() + match.length();
-                    size_t searchLen = std::min((size_t)2000, html.length() - pos);
+                    size_t searchLen = std::min(MAX_SECTION_SEARCH_LENGTH, html.length() - pos);
                     std::wstring afterHeading = html.substr(pos, searchLen);
                     
                     // Look for the next <ul> or list container
@@ -715,7 +721,7 @@ bool SahibindenImporter::ExtractFeaturesFromHtml(const std::wstring& html, Sahib
                     std::wsmatch ulMatch;
                     if (std::regex_search(afterHeading, ulMatch, reUlStart)) {
                         size_t ulPos = ulMatch.position() + ulMatch.length();
-                        std::wstring listContent = afterHeading.substr(ulPos, std::min((size_t)1500, afterHeading.length() - ulPos));
+                        std::wstring listContent = afterHeading.substr(ulPos, std::min(MAX_LIST_CONTENT_LENGTH, afterHeading.length() - ulPos));
                         
                         // Find closing </ul>
                         size_t ulEnd = listContent.find(L"</ul>");
@@ -723,9 +729,8 @@ bool SahibindenImporter::ExtractFeaturesFromHtml(const std::wstring& html, Sahib
                             listContent = listContent.substr(0, ulEnd);
                         }
                         
-                        // Extract selected items in this list
-                        std::wregex reLi(L"<li[^>]*class=\"[^\"]*selected[^\"]*\"[^>]*>\\s*([^<]+)\\s*</li>");
-                        auto liBegin = std::wsregex_iterator(listContent.begin(), listContent.end(), reLi);
+                        // Extract selected items in this list (reuse the shared regex pattern)
+                        auto liBegin = std::wsregex_iterator(listContent.begin(), listContent.end(), SELECTED_ITEM_REGEX);
                         auto liEnd = std::wsregex_iterator();
                         
                         CString result;
