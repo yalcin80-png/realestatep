@@ -539,7 +539,7 @@ bool SahibindenImporter::ParseHtmlDirectly(const CString& url, const std::wstrin
         else if (label.find(L"Seri") != std::wstring::npos) p.CAR_Series = ToCString(value);
         else if (label.find(L"Model") != std::wstring::npos) p.CAR_Model = ToCString(value);
         else if (label.find(L"Yıl") != std::wstring::npos || label.find(L"Yil") != std::wstring::npos) p.CAR_Year = ToCString(value);
-        else if (label.find(L"KM") != std::wstring::npos || label == L"Km") p.CAR_Km = ToCString(value);
+        else if (label.find(L"KM") != std::wstring::npos || label.find(L"Km") != std::wstring::npos) p.CAR_Km = ToCString(value);
         else if (label.find(L"Yakıt") != std::wstring::npos) p.CAR_FuelType = ToCString(value);
         else if (label.find(L"Vites") != std::wstring::npos) p.CAR_Transmission = ToCString(value);
         else if (label.find(L"Kasa Tipi") != std::wstring::npos) p.CAR_BodyType = ToCString(value);
@@ -835,10 +835,10 @@ bool SahibindenImporter::SaveToDatabase(const SahibindenListingPayload& p, LogFn
 
     auto isCar = [&]() -> bool {
         CString cat2 = p.CAR_Cat2; cat2.MakeLower();
-        return isType(_T("vasıta")) || isType(_T("vasita")) || isType(_T("otomobil")) || 
-               (cat2.Find(_T("otomobil")) != -1) || (urlLower.Find(_T("vasita")) != -1);
+        // isType already does case-insensitive matching via MakeLower()
+        return isType(_T("vasita")) || isType(_T("otomobil")) || 
+               (cat2.Find(_T("otomobil")) != -1);
         };
-
 
 
 
