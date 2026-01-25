@@ -727,6 +727,54 @@ INT_PTR CHomeDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
             return TRUE;
         }
     }
+    
+    // Handle timer for property data fetching
+    if (uMsg == WM_TIMER && wParam == 9999) {
+        ::KillTimer(*this, 9999);
+        
+        // Now fetch JSON and HTML from the loaded page
+        m_browser.GetListingJSON([this](std::wstring jsonText) {
+            // Got JSON, now get HTML
+            m_browser.GetSourceCode([this, jsonText](std::wstring htmlText) {
+                // Convert to UTF-8
+                std::string utf8Json;
+                std::string utf8Html;
+                
+                if (!jsonText.empty()) {
+                    int len = WideCharToMultiByte(CP_UTF8, 0, jsonText.c_str(), (int)jsonText.size(), nullptr, 0, nullptr, nullptr);
+                    utf8Json.resize(len);
+                    WideCharToMultiByte(CP_UTF8, 0, jsonText.c_str(), (int)jsonText.size(), &utf8Json[0], len, nullptr, nullptr);
+                }
+                
+                if (!htmlText.empty()) {
+                    int len = WideCharToMultiByte(CP_UTF8, 0, htmlText.c_str(), (int)htmlText.size(), nullptr, 0, nullptr, nullptr);
+                    utf8Html.resize(len);
+                    WideCharToMultiByte(CP_UTF8, 0, htmlText.c_str(), (int)htmlText.size(), &utf8Html[0], len, nullptr, nullptr);
+                }
+                
+                // Construct URL
+                CString url;
+                url.Format(_T("https://www.sahibinden.com/ilan/%s"), (LPCTSTR)m_pendingIlanNumarasi);
+                
+                // Use SahibindenImporter to parse and save
+                SahibindenImporter importer;
+                bool success = importer.ImportFromJsonAndHtmlString(
+                    url,
+                    utf8Json,
+                    utf8Html,
+                    [this](const CString& msg) {
+                        // Log function - could show in status or notes field
+                        SetDlgItemText(IDC_EDIT_NOTE_INTERNAL, msg);
+                    });
+                
+                // Update UI based on success
+                OnPropertyDataFetched(url, success);
+            });
+        });
+        
+        return TRUE;
+    }
+    
     switch (uMsg)
     {
     case WM_VSCROLL:
@@ -838,44 +886,63 @@ void CHomeDialog::OnIlanBilgileriniAl() {
         return;
     }
 
-    SahibindenImporter importer;
-    auto ilanBilgisi = importer.FetchByIlanNumarasi(ilanNumarasi);
+    // Initialize browser if not already done
+    InitBrowserIfNeeded();
+    
+    // Store the property ID for later use
+    m_pendingIlanNumarasi = ilanNumarasi;
+    
+    // Start fetching process
+    FetchPropertyData(ilanNumarasi);
+}
 
-    if (ilanBilgisi) {
-        // Map the fetched data to dialog controls
-        // For now, we'll populate available fields
-        // Note: The actual field mappings depend on the available controls
-        
-        // Set Title/Description to General Notes if available
-        if (!ilanBilgisi->Baslik.empty()) {
-            SetDlgItemText(IDC_EDIT_NOTE_GENERAL, CString(ilanBilgisi->Baslik.c_str()));
-        }
-        
-        // Set Price if available
-        if (!ilanBilgisi->Fiyat.empty()) {
-            SetDlgItemText(ID_EDIT_FIYAT, CString(ilanBilgisi->Fiyat.c_str()));
-        }
-        
-        // Append Description to internal notes if available
-        if (!ilanBilgisi->Aciklama.empty()) {
-            CString currentNotes;
-            GetDlgItemText(IDC_EDIT_NOTE_INTERNAL, currentNotes);
-            if (!currentNotes.IsEmpty()) {
-                currentNotes += _T("\r\n");
-            }
-            currentNotes += CString(ilanBilgisi->Aciklama.c_str());
-            SetDlgItemText(IDC_EDIT_NOTE_INTERNAL, currentNotes);
-        }
-        
-        // Also set the İlan No field
-        SetDlgItemText(IDC_EDIT_ILAN_NO, ilanNumarasi);
-        
-        MessageBox(_T("İlan bilgileri başarıyla alındı!"), _T("Bilgi"), MB_ICONINFORMATION);
-    } else {
-        MessageBox(_T("İlan bilgileri alınamadı! Lütfen ilan numarasını kontrol edin."), _T("Hata"), MB_ICONERROR);
+void CHomeDialog::InitBrowserIfNeeded() {
+    if (!m_browserInitialized) {
+        // Create a hidden browser window for fetching data
+        // Position it off-screen or very small
+        RECT rc = { -10, -10, -5, -5 };
+        m_browser.Create(*this, rc);
+        m_browser.InitBrowser(*this);
+        m_browserInitialized = true;
     }
 }
 
+void CHomeDialog::FetchPropertyData(const CString& ilanNumarasi) {
+    // Construct the URL
+    CString url;
+    url.Format(_T("https://www.sahibinden.com/ilan/%s"), (LPCTSTR)ilanNumarasi);
+    
+    // Show progress message
+    SetDlgItemText(IDC_EDIT_NOTE_INTERNAL, _T("İlan bilgileri alınıyor..."));
+    
+    // Navigate to the property page
+    m_browser.Navigate(url);
+    
+    // Wait for page to load, then fetch JSON and HTML
+    // Use a small delay to allow page to fully load
+    ::SetTimer(*this, 9999, 3000, nullptr); // 3 second delay
+}
+
+void CHomeDialog::OnPropertyDataFetched(const CString& url, bool success) {
+    if (!success) {
+        MessageBox(_T("İlan bilgileri alınamadı! Lütfen ilan numarasını kontrol edin."), _T("Hata"), MB_ICONERROR);
+        SetDlgItemText(IDC_EDIT_NOTE_INTERNAL, _T(""));
+        return;
+    }
+    
+    MessageBox(_T("İlan bilgileri başarıyla alındı ve kaydedildi!"), _T("Bilgi"), MB_ICONINFORMATION);
+    
+    // Refresh the dialog with the saved data
+    if (!m_pendingIlanNumarasi.IsEmpty()) {
+        // Try to load the data from database
+        auto dataMap = m_dbManager.FetchRecordMap(TABLE_NAME_HOME, _T("ListingNo"), m_pendingIlanNumarasi);
+        if (!dataMap.empty()) {
+            m_dbManager.Bind_Data_To_UI(this, TABLE_NAME_HOME, dataMap);
+            m_featuresPage1.LoadFromMap(dataMap);
+            m_featuresPage2.LoadFromMap(dataMap);
+        }
+    }
+}
 
 
 

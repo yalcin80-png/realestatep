@@ -7,6 +7,7 @@
 
 #include <commctrl.h>
 #include "HomeFeaturesPage.h"
+#include "SimpleBrowser.h"
 
 class CHomeDialog : public CDialog
 {
@@ -64,4 +65,13 @@ private:
     void ShiftGeneralControlsForTabHeader();
     void LayoutTabAndPages();
     void SwitchTab(int index);
+    
+    // Browser for fetching single property data
+    CSimpleBrowser m_browser;
+    bool m_browserInitialized = false;
+    CString m_pendingIlanNumarasi;
+    
+    void InitBrowserIfNeeded();
+    void FetchPropertyData(const CString& ilanNumarasi);
+    void OnPropertyDataFetched(const CString& url, bool success);
 };
