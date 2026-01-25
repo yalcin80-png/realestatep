@@ -665,72 +665,98 @@ bool SahibindenImporter::ExtractContactFromHtml(const std::wstring& html, Sahibi
 }
 
 bool SahibindenImporter::ExtractFeaturesFromHtml(const std::wstring& html, SahibindenListingPayload& ioPayload) {
-    // Extract all selected features first
-    std::wregex reLi(L"<li[^>]*class=\"selected\"[^>]*>\\s*([^<]+)\\s*</li>");
+    // Extract all selected features first (for backward compatibility)
+    std::wregex reLi(L"<li[^>]*class=\"[^\"]*selected[^\"]*\"[^>]*>\\s*([^<]+)\\s*</li>");
     auto begin = std::wsregex_iterator(html.begin(), html.end(), reLi);
     auto end = std::wsregex_iterator();
     CString features;
-    std::vector<std::wstring> allFeatures;
     
     for (auto it = begin; it != end; ++it) {
         std::wstring item = (*it)[1].str();
         if (item.length() > 2) {
-            std::wstring decoded = HtmlEntityDecode(item);
-            allFeatures.push_back(decoded);
             if (!features.IsEmpty()) features += _T(", ");
-            features += ToCString(decoded);
+            features += ToCString(HtmlEntityDecode(item));
         }
     }
     ioPayload.featuresText = features;
     
-    // Now extract categorized features by looking for section headers in HTML
-    // These sections typically appear as headings before the feature lists
+    // Extract categorized features by looking for section headers in HTML
+    // Sahibinden.com typically uses structure like:
+    // <h3 class="classified-detail-info-list-title">Cephe</h3>
+    // <ul>
+    //   <li class="selected">Batı</li>
+    //   <li class="selected">Güney</li>
+    // </ul>
     
-    auto ExtractFeaturesInSection = [&](const std::wstring& sectionName) -> CString {
-        // Find the section heading
-        std::wstring pattern = L"<h3[^>]*>\\s*" + sectionName + L"[^<]*</h3>";
-        std::wregex reSection(pattern, std::regex_constants::icase);
-        std::wsmatch match;
-        
-        if (std::regex_search(html, match, reSection)) {
-            // Find the position after the heading
-            size_t pos = match.position() + match.length();
-            std::wstring afterHeading = html.substr(pos, std::min((size_t)5000, html.length() - pos));
+    auto ExtractFeaturesInSection = [&](const std::vector<std::wstring>& sectionNames) -> CString {
+        for (const auto& sectionName : sectionNames) {
+            // Try multiple patterns for section headers
+            std::vector<std::wstring> patterns = {
+                // Pattern 1: <h3...>Section Name</h3>
+                L"<h3[^>]*>\\s*" + sectionName + L"[^<]*</h3>",
+                // Pattern 2: <h4...>Section Name</h4>
+                L"<h4[^>]*>\\s*" + sectionName + L"[^<]*</h4>",
+                // Pattern 3: <span...>Section Name</span>
+                L"<span[^>]*class=\"[^\"]*title[^\"]*\"[^>]*>\\s*" + sectionName + L"[^<]*</span>"
+            };
             
-            // Extract selected items in the next <ul> list
-            std::wregex reLi(L"<li[^>]*class=\"selected\"[^>]*>\\s*([^<]+)\\s*</li>");
-            auto begin = std::wsregex_iterator(afterHeading.begin(), afterHeading.end(), reLi);
-            auto end = std::wsregex_iterator();
-            
-            CString result;
-            int count = 0;
-            for (auto it = begin; it != end && count < 20; ++it, ++count) {
-                std::wstring item = (*it)[1].str();
-                if (item.length() > 1) {
-                    if (!result.IsEmpty()) result += _T(", ");
-                    result += ToCString(HtmlEntityDecode(item));
-                }
-                // Stop if we hit another section heading
-                if (afterHeading.find(L"<h3", (*it).position() + (*it).length()) < afterHeading.find(L"</ul>", (*it).position())) {
-                    break;
+            for (const auto& pattern : patterns) {
+                std::wregex reSection(pattern, std::regex_constants::icase);
+                std::wsmatch match;
+                
+                if (std::regex_search(html, match, reSection)) {
+                    // Find the position after the heading
+                    size_t pos = match.position() + match.length();
+                    size_t searchLen = std::min((size_t)2000, html.length() - pos);
+                    std::wstring afterHeading = html.substr(pos, searchLen);
+                    
+                    // Look for the next <ul> or list container
+                    std::wregex reUlStart(L"<ul[^>]*>");
+                    std::wsmatch ulMatch;
+                    if (std::regex_search(afterHeading, ulMatch, reUlStart)) {
+                        size_t ulPos = ulMatch.position() + ulMatch.length();
+                        std::wstring listContent = afterHeading.substr(ulPos, std::min((size_t)1500, afterHeading.length() - ulPos));
+                        
+                        // Find closing </ul>
+                        size_t ulEnd = listContent.find(L"</ul>");
+                        if (ulEnd != std::wstring::npos) {
+                            listContent = listContent.substr(0, ulEnd);
+                        }
+                        
+                        // Extract selected items in this list
+                        std::wregex reLi(L"<li[^>]*class=\"[^\"]*selected[^\"]*\"[^>]*>\\s*([^<]+)\\s*</li>");
+                        auto liBegin = std::wsregex_iterator(listContent.begin(), listContent.end(), reLi);
+                        auto liEnd = std::wsregex_iterator();
+                        
+                        CString result;
+                        for (auto it = liBegin; it != liEnd; ++it) {
+                            std::wstring item = (*it)[1].str();
+                            if (item.length() > 1) {
+                                if (!result.IsEmpty()) result += _T(", ");
+                                result += ToCString(HtmlEntityDecode(item));
+                            }
+                        }
+                        
+                        if (!result.IsEmpty()) {
+                            return result;
+                        }
+                    }
                 }
             }
-            return result;
         }
         return _T("");
     };
     
-    // Extract features by category (Turkish section names from Sahibinden.com)
-    ioPayload.facades = ExtractFeaturesInSection(L"Cephe");
-    ioPayload.featuresInterior = ExtractFeaturesInSection(L"İç Özellikler");
-    ioPayload.featuresExterior = ExtractFeaturesInSection(L"Dış Özellikler");
-    ioPayload.featuresNeighborhood = ExtractFeaturesInSection(L"Muhit");
-    ioPayload.featuresTransport = ExtractFeaturesInSection(L"Ulaşım");
-    ioPayload.featuresView = ExtractFeaturesInSection(L"Manzara");
-    ioPayload.featuresAccessibility = ExtractFeaturesInSection(L"Engelli");
-    
-    // Extract Housing Type (Konut Tipi) - usually a single selection
-    ioPayload.housingType = ExtractFeaturesInSection(L"Konut Tipi");
+    // Extract features by category with fallback names
+    // Using multiple variations to handle different page versions
+    ioPayload.facades = ExtractFeaturesInSection({L"Cephe", L"Facade"});
+    ioPayload.featuresInterior = ExtractFeaturesInSection({L"İç Özellikler", L"Ic Ozellikler", L"Interior Features"});
+    ioPayload.featuresExterior = ExtractFeaturesInSection({L"Dış Özellikler", L"Dis Ozellikler", L"Exterior Features"});
+    ioPayload.featuresNeighborhood = ExtractFeaturesInSection({L"Muhit", L"Neighborhood", L"Çevre"});
+    ioPayload.featuresTransport = ExtractFeaturesInSection({L"Ulaşım", L"Ulasim", L"Transportation"});
+    ioPayload.featuresView = ExtractFeaturesInSection({L"Manzara", L"View"});
+    ioPayload.featuresAccessibility = ExtractFeaturesInSection({L"Engelli", L"Yaşlı", L"Erişilebilir", L"Accessibility"});
+    ioPayload.housingType = ExtractFeaturesInSection({L"Konut Tipi", L"Housing Type"});
     
     return true;
 }
