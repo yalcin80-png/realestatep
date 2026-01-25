@@ -966,10 +966,10 @@ bool SahibindenImporter::SaveToDatabase(const SahibindenListingPayload& p, LogFn
 }
 
 // Fetch property data by property ID
-std::optional<IlanBilgisi> SahibindenImporter::FetchByIlanNumarasi(const std::wstring& ilanNumarasi) {
+std::optional<IlanBilgisi> SahibindenImporter::FetchByIlanNumarasi(const CString& ilanNumarasi) {
     try {
         // Construct URL from property ID
-        std::wstring url = L"https://www.sahibinden.com/ilan/" + ilanNumarasi;
+        // std::wstring url = L"https://www.sahibinden.com/ilan/" + std::wstring(ilanNumarasi);
         
         // Note: In a real implementation, you would use an HTTP client to download the HTML
         // For now, this is a placeholder that returns nullopt since we don't have HTTP capabilities
@@ -977,12 +977,6 @@ std::optional<IlanBilgisi> SahibindenImporter::FetchByIlanNumarasi(const std::ws
         // 1. HTTP client to download HTML from the URL
         // 2. HTML parser to extract data from specific selectors
         // 3. Populate IlanBilgisi struct with extracted data
-        
-        // Placeholder implementation
-        IlanBilgisi ilan;
-        ilan.Baslik = L"";
-        ilan.Fiyat = L"";
-        ilan.Aciklama = L"";
         
         // Return nullopt to indicate data fetching is not implemented
         return std::nullopt;

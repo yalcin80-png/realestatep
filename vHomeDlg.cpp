@@ -838,7 +838,7 @@ void CHomeDialog::OnIlanBilgileriniAl() {
     }
 
     SahibindenImporter importer;
-    auto ilanBilgisi = importer.FetchByIlanNumarasi(std::wstring(ilanNumarasi));
+    auto ilanBilgisi = importer.FetchByIlanNumarasi(ilanNumarasi);
 
     if (ilanBilgisi) {
         // Map the fetched data to dialog controls

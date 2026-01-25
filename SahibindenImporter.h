@@ -92,7 +92,7 @@ public:
     CString ExtractIdFromUrl(const CString& url);
 
     // Fetch property data by property ID
-    std::optional<IlanBilgisi> FetchByIlanNumarasi(const std::wstring& ilanNumarasi);
+    std::optional<IlanBilgisi> FetchByIlanNumarasi(const CString& ilanNumarasi);
 
 private:
     // JSON Yöntemi (Hızlı)
