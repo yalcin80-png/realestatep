@@ -190,22 +190,24 @@ void GdiRentalAuthLayout::Render(IDrawContext& ctx, int pageNo) {
         DrawField(L"RAYLI SİSTEMLER:", GetVal(L"RailSystems"));
         DrawField(L"DENİZ ULAŞIMI:", GetVal(L"SeaTransport"));
         
-        // Otopark bilgisi
+        // Otopark bilgisi - horizontal checkboxes
         ctx.SetFont(MakeFont(L"Arial", 10, true));
         ctx.SetBrush(RGB(0, 0, 0));
         ctx.DrawTextW(L"OTOPARK:", x + 10, y, 200, 30, DT_LEFT);
-        x += 220;
-        DrawCheckbox(L"AÇIK");
-        int parkY1 = y;
-        y -= 30;
-        x += 150;
-        DrawCheckbox(L"KAPALI");
-        int parkY2 = y;
-        y -= 30;
-        x += 150;
-        DrawCheckbox(L"YOK");
-        x -= 520; // Reset x
-        y = (parkY1 > parkY2 ? parkY1 : parkY2) + 10;
+        
+        int parkingX = x + 220;
+        int parkingStartY = y;
+        const int parkingSpacing = 150;
+        std::vector<std::wstring> parkingOptions = {L"AÇIK", L"KAPALI", L"YOK"};
+        
+        for (size_t i = 0; i < parkingOptions.size(); i++) {
+            int tempX = x;
+            x = parkingX + (i * parkingSpacing);
+            y = parkingStartY;
+            DrawCheckbox(parkingOptions[i]);
+            x = tempX;
+        }
+        y = parkingStartY + 30;
         y += 20;
 
         // 3. YAPI BÖLÜM ALANLARI
@@ -219,6 +221,7 @@ void GdiRentalAuthLayout::Render(IDrawContext& ctx, int pageNo) {
         DrawSectionHeader(L"4. İÇ ÖZELLİKLER");
         
         // Grid layout for checkboxes (3 columns)
+        const int checkboxHeight = 30; // Height added by DrawCheckbox
         int colCount = 3;
         int colWidth = w / colCount;
         int startX = x;
@@ -241,7 +244,7 @@ void GdiRentalAuthLayout::Render(IDrawContext& ctx, int pageNo) {
                 cbCol = 0;
                 y = maxY;
             } else {
-                y -= 30; // Reset to row start
+                y -= checkboxHeight; // Reset to row start
             }
         }
         x = startX; // Reset x
@@ -326,7 +329,7 @@ void GdiRentalAuthLayout::Render(IDrawContext& ctx, int pageNo) {
         ctx.SetFont(MakeFont(L"Arial", 9, false));
         ctx.DrawTextW(L"Tarih ve İmza", rightX, sigY + sigBoxH + 75, sigBoxW, 20, DT_CENTER);
 
-        // Footer not
+        // Footer note
         y = sigY + sigBoxH + 120;
         ctx.SetFont(MakeFont(L"Arial", 8, false));
         ctx.SetBrush(RGB(100, 100, 100));
