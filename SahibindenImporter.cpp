@@ -969,7 +969,7 @@ bool SahibindenImporter::SaveToDatabase(const SahibindenListingPayload& p, LogFn
 std::optional<IlanBilgisi> SahibindenImporter::FetchByIlanNumarasi(const CString& ilanNumarasi) {
     try {
         // Construct URL from property ID
-        // std::wstring url = L"https://www.sahibinden.com/ilan/" + std::wstring(ilanNumarasi);
+        // std::wstring url = L"https://www.sahibinden.com/ilan/" + std::wstring(ilanNumarasi.GetString());
         
         // Note: In a real implementation, you would use an HTTP client to download the HTML
         // For now, this is a placeholder that returns nullopt since we don't have HTTP capabilities
