@@ -665,18 +665,73 @@ bool SahibindenImporter::ExtractContactFromHtml(const std::wstring& html, Sahibi
 }
 
 bool SahibindenImporter::ExtractFeaturesFromHtml(const std::wstring& html, SahibindenListingPayload& ioPayload) {
+    // Extract all selected features first
     std::wregex reLi(L"<li[^>]*class=\"selected\"[^>]*>\\s*([^<]+)\\s*</li>");
     auto begin = std::wsregex_iterator(html.begin(), html.end(), reLi);
     auto end = std::wsregex_iterator();
     CString features;
+    std::vector<std::wstring> allFeatures;
+    
     for (auto it = begin; it != end; ++it) {
         std::wstring item = (*it)[1].str();
         if (item.length() > 2) {
+            std::wstring decoded = HtmlEntityDecode(item);
+            allFeatures.push_back(decoded);
             if (!features.IsEmpty()) features += _T(", ");
-            features += ToCString(HtmlEntityDecode(item));
+            features += ToCString(decoded);
         }
     }
     ioPayload.featuresText = features;
+    
+    // Now extract categorized features by looking for section headers in HTML
+    // These sections typically appear as headings before the feature lists
+    
+    auto ExtractFeaturesInSection = [&](const std::wstring& sectionName) -> CString {
+        // Find the section heading
+        std::wstring pattern = L"<h3[^>]*>\\s*" + sectionName + L"[^<]*</h3>";
+        std::wregex reSection(pattern, std::regex_constants::icase);
+        std::wsmatch match;
+        
+        if (std::regex_search(html, match, reSection)) {
+            // Find the position after the heading
+            size_t pos = match.position() + match.length();
+            std::wstring afterHeading = html.substr(pos, std::min((size_t)5000, html.length() - pos));
+            
+            // Extract selected items in the next <ul> list
+            std::wregex reLi(L"<li[^>]*class=\"selected\"[^>]*>\\s*([^<]+)\\s*</li>");
+            auto begin = std::wsregex_iterator(afterHeading.begin(), afterHeading.end(), reLi);
+            auto end = std::wsregex_iterator();
+            
+            CString result;
+            int count = 0;
+            for (auto it = begin; it != end && count < 20; ++it, ++count) {
+                std::wstring item = (*it)[1].str();
+                if (item.length() > 1) {
+                    if (!result.IsEmpty()) result += _T(", ");
+                    result += ToCString(HtmlEntityDecode(item));
+                }
+                // Stop if we hit another section heading
+                if (afterHeading.find(L"<h3", (*it).position() + (*it).length()) < afterHeading.find(L"</ul>", (*it).position())) {
+                    break;
+                }
+            }
+            return result;
+        }
+        return _T("");
+    };
+    
+    // Extract features by category (Turkish section names from Sahibinden.com)
+    ioPayload.facades = ExtractFeaturesInSection(L"Cephe");
+    ioPayload.featuresInterior = ExtractFeaturesInSection(L"İç Özellikler");
+    ioPayload.featuresExterior = ExtractFeaturesInSection(L"Dış Özellikler");
+    ioPayload.featuresNeighborhood = ExtractFeaturesInSection(L"Muhit");
+    ioPayload.featuresTransport = ExtractFeaturesInSection(L"Ulaşım");
+    ioPayload.featuresView = ExtractFeaturesInSection(L"Manzara");
+    ioPayload.featuresAccessibility = ExtractFeaturesInSection(L"Engelli");
+    
+    // Extract Housing Type (Konut Tipi) - usually a single selection
+    ioPayload.housingType = ExtractFeaturesInSection(L"Konut Tipi");
+    
     return true;
 }
 
@@ -956,6 +1011,17 @@ bool SahibindenImporter::SaveToDatabase(const SahibindenListingPayload& p, LogFn
     h.WebsiteName = _T("sahibinden");
     h.ListingURL = p.listingUrl;
     h.NoteGeneral = p.featuresText;
+    
+    // Map new categorized features (Images 2-3-4)
+    h.Facades = p.facades;
+    h.FeaturesInterior = p.featuresInterior;
+    h.FeaturesExterior = p.featuresExterior;
+    h.FeaturesNeighborhood = p.featuresNeighborhood;
+    h.FeaturesTransport = p.featuresTransport;
+    h.FeaturesView = p.featuresView;
+    h.HousingType = p.housingType;
+    h.FeaturesAccessibility = p.featuresAccessibility;
+    
     h.SetAttr("price_raw", priceRaw);
     h.sync_id = db.GenerateSyncId();
     h.Updated_At = db.GetCurrentIsoUtc();
