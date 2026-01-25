@@ -2,6 +2,7 @@
 #include "vHomeDlg.h"
 #include "dataIsMe.h"
 #include "resource.h"
+#include "SahibindenImporter.h"
 #include <vector>
 #include <map>
 #include <sstream>
