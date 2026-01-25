@@ -1,3 +1,23 @@
+// ============================================================================
+// PREVIEWPANEL.CPP - Profesyonel Yazdırma ve Önizleme Sistemi
+// ============================================================================
+// Bu dosya, GDI+ tabanlı belge önizleme ve yazdırma işlevlerini içerir.
+//
+// PROFESYONEL ÖZELLIKLER:
+// - Gelişmiş yazdırma diyaloğu (sayfa aralığı, kopya sayısı)
+// - Gerçek zamanlı durum çubuğu (sayfa bilgisi, zoom yüzdesi)
+// - Klavye kısayolları (Ctrl+P, Ctrl+S, PgUp/PgDn, Home/End, Ctrl+/-)
+// - Akıllı buton yönetimi (önceki/sonraki otomatik enable/disable)
+// - Yüksek kaliteli yazıcı çıktısı (anti-aliasing, compositing)
+// - Kapsamlı hata işleme (detaylı mesajlar, sorun giderme ipuçları)
+// - İlerleme göstergeleri (PDF/PNG kaydetme, yazdırma)
+// - Win32++ mimarisi (MFC/ATL bağımlılığı yok)
+//
+// KULLANIM:
+// PreviewPanel, IDocumentLayout arayüzü üzerinden çalışır ve
+// LayoutFactory ile oluşturulan tüm belge türlerini destekler.
+// ============================================================================
+
 #include "stdafx.h"
 #include "PreviewPanel.h"
 #include "RibbonApp.h"
@@ -364,11 +384,20 @@ CString CPreviewPanel::FormatZoomPercentage() const
     {
         // Mevcut görüntüleme boyutunu orijinal boyuta bölerek zoom hesapla
         double zoomX = (m_zoomWnd.m_ptszDest.cx * 100.0) / m_zoomWnd.m_cxImage;
-        result.Format(L"Yakınlaştırma: %%%d", (int)(zoomX + 0.5));
+        
+        // "Best Fit" modunda mı kontrol et
+        if (m_zoomWnd.m_bBestFit)
+        {
+            result.Format(L"Yak\u0131nla\u015Ft\u0131rma: %%%d (En iyi s\u0131\u011Fd\u0131r)", (int)(zoomX + 0.5));
+        }
+        else
+        {
+            result.Format(L"Yak\u0131nla\u015Ft\u0131rma: %%%d", (int)(zoomX + 0.5));
+        }
     }
     else
     {
-        result = L"Yakınlaştırma: %100";
+        result = L"Yak\u0131nla\u015Ft\u0131rma: %100";
     }
     
     return result;
