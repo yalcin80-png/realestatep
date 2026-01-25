@@ -424,6 +424,11 @@ void CZoomWnd::ActualSize()
     m_cyCenter = m_cyImage / 2;
     SetScrollBars();
     ::InvalidateRect(*this, nullptr, FALSE);
+    
+    // Ana pencereyi bilgilendir (zoom değişti)
+    HWND hParent = ::GetParent(*this);
+    if (hParent)
+        ::PostMessage(hParent, WM_USER + 102, 0, 0); // Zoom değişti mesajı
 }
 
 void CZoomWnd::BestFit()
@@ -465,6 +470,11 @@ void CZoomWnd::BestFit()
         SetScrollBars();
 
     ::InvalidateRect(*this, nullptr, FALSE);
+    
+    // Ana pencereyi bilgilendir (zoom değişti)
+    HWND hParent = ::GetParent(*this);
+    if (hParent)
+        ::PostMessage(hParent, WM_USER + 102, 0, 0); // Zoom değişti mesajı
 }
 
 void CZoomWnd::AdjustRectPlacement()

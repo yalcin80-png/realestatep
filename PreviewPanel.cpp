@@ -332,6 +332,18 @@ void CPreviewPanel::UpdatePageInfo()
         pageInfo.Format(L"Sayfa %d / %d", m_currentPage, m_totalPages);
         m_StatusBar.SetPartText(0, pageInfo);
     }
+    
+    // Önceki/Sonraki butonlarının durumunu güncelle
+    if (m_ToolBar.IsWindow())
+    {
+        // Önceki butonu - sadece 1. sayfada değilsek aktif
+        BOOL enablePrev = (m_currentPage > 1);
+        m_ToolBar.EnableButton(ID_BTN_PREV, enablePrev);
+        
+        // Sonraki butonu - sadece son sayfada değilsek aktif
+        BOOL enableNext = (m_currentPage < m_totalPages);
+        m_ToolBar.EnableButton(ID_BTN_NEXT, enableNext);
+    }
 }
 
 void CPreviewPanel::UpdateZoomInfo()
@@ -476,6 +488,10 @@ void CPreviewPanel::OnSaveAsPDF()
     CFileDialog dlg(FALSE, L"pdf", fileName, OFN_OVERWRITEPROMPT, L"PDF Dosyas (*.pdf)|*.pdf||");
     if (dlg.DoModal(*this) != IDOK) return;
 
+    // İşlem başladığını göster
+    if (m_StatusBar.IsWindow())
+        m_StatusBar.SetPartText(2, L"PDF olu\u015Fturuluyor...");
+
     HaruDrawContext pdf;
 
     if (pdf.BeginDocument(dlg.GetPathName()))
@@ -483,28 +499,60 @@ void CPreviewPanel::OnSaveAsPDF()
         try
         {
             std::unique_ptr<IDocumentLayout> layout(LayoutFactory::CreateLayout(m_data.docType));
-            if (layout)
+            if (!layout)
             {
-                layout->SetData(m_data.fields);
-                int pages = layout->GetTotalPages();
-
-                for (int i = 1; i <= pages; ++i)
-                {
-                    layout->Render(pdf, i);
-                }
+                throw std::runtime_error("Belge düzeni oluşturulamadı");
             }
+            
+            layout->SetData(m_data.fields);
+            int pages = layout->GetTotalPages();
+
+            for (int i = 1; i <= pages; ++i)
+            {
+                // İlerleme göster
+                if (m_StatusBar.IsWindow())
+                {
+                    CString progress;
+                    progress.Format(L"PDF olu\u015Fturuluyor: Sayfa %d / %d", i, pages);
+                    m_StatusBar.SetPartText(2, progress);
+                }
+                
+                layout->Render(pdf, i);
+            }
+            
             pdf.EndDocument();
-            MessageBox(L"PDF Kaydedildi.", L"Bilgi", MB_OK);
+            
+            // Başarı mesajı
+            CString successMsg;
+            successMsg.Format(L"PDF ba\u015Far\u0131yla kaydedildi.\nDosya: %s\nSayfa say\u0131s\u0131: %d", 
+                             dlg.GetPathName().GetString(), pages);
+            MessageBox(successMsg, L"Bilgi", MB_ICONINFORMATION);
+            
+            if (m_StatusBar.IsWindow())
+                m_StatusBar.SetPartText(2, L"Haz\u0131r");
         }
         catch (const std::exception& e)
         {
-            CString err; err.Format(L"PDF Hatas: %S", e.what());
+            CString err; 
+            err.Format(L"PDF Hatas\u0131:\n%S\n\nL\u00FCtfen dosya yolunun ge\u00E7erli oldu\u011Funu ve "
+                      L"yazma izniniz oldu\u011Funu kontrol edin.", e.what());
             MessageBox(err, L"Hata", MB_ICONERROR);
+            
+            if (m_StatusBar.IsWindow())
+                m_StatusBar.SetPartText(2, L"Hata - PDF olu\u015Fturulamad\u0131");
         }
     }
     else
     {
-        MessageBox(L"PDF Dosyas oluturulamad (Dosya ak olabilir).", L"Hata", MB_ICONERROR);
+        MessageBox(L"PDF Dosyas\u0131 olu\u015Fturulamad\u0131.\n\n"
+                  L"Olas\u0131 sebepler:\n"
+                  L"- Dosya ba\u015Fka bir program taraf\u0131ndan kullan\u0131l\u0131yor\n"
+                  L"- Yazma izniniz yok\n"
+                  L"- Disk dolu", 
+                  L"Hata", MB_ICONERROR);
+        
+        if (m_StatusBar.IsWindow())
+            m_StatusBar.SetPartText(2, L"Haz\u0131r");
     }
 }
 
@@ -519,13 +567,43 @@ void CPreviewPanel::OnSaveAsPNG()
     CFileDialog dlg(FALSE, L"png", fileName, OFN_OVERWRITEPROMPT, L"PNG Resim (*.png)|*.png||");
     if (dlg.DoModal(*this) != IDOK) return;
 
+    // İşlem başladığını göster
+    if (m_StatusBar.IsWindow())
+        m_StatusBar.SetPartText(2, L"PNG kaydediliyor...");
+
     HBITMAP hBmp = GeneratePreviewBitmap();
-    if (hBmp) {
+    if (hBmp) 
+    {
         if (SaveBitmapToPNG(hBmp, dlg.GetPathName()))
-            MessageBox(L"Resim Kaydedildi.", L"Bilgi", MB_OK);
+        {
+            CString successMsg;
+            successMsg.Format(L"Resim ba\u015Far\u0131yla kaydedildi.\nDosya: %s\nSayfa: %d", 
+                             dlg.GetPathName().GetString(), m_currentPage);
+            MessageBox(successMsg, L"Bilgi", MB_ICONINFORMATION);
+            
+            if (m_StatusBar.IsWindow())
+                m_StatusBar.SetPartText(2, L"Haz\u0131r");
+        }
         else
-            MessageBox(L"Resim kaydedilemedi.", L"Hata", MB_ICONERROR);
+        {
+            MessageBox(L"Resim kaydedilemedi.\n\n"
+                      L"Olas\u0131 sebepler:\n"
+                      L"- Dosya ba\u015Fka bir program taraf\u0131ndan kullan\u0131l\u0131yor\n"
+                      L"- Yazma izniniz yok\n"
+                      L"- Disk dolu", 
+                      L"Hata", MB_ICONERROR);
+            
+            if (m_StatusBar.IsWindow())
+                m_StatusBar.SetPartText(2, L"Haz\u0131r");
+        }
         DeleteObject(hBmp);
+    }
+    else
+    {
+        MessageBox(L"\u00D6nizleme olu\u015Fturulamad\u0131.", L"Hata", MB_ICONERROR);
+        
+        if (m_StatusBar.IsWindow())
+            m_StatusBar.SetPartText(2, L"Haz\u0131r");
     }
 }
 
