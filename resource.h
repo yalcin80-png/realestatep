@@ -276,6 +276,7 @@
 #define IDC_EDIT_PAFTA                  2087
 #define IDC_EDIT_YETKI_BASLANGIC        2088
 #define IDC_EDIT_YETKI_BITIS            2089
+#define IDC_BTN_FETCH_LISTING           2090
 #define IDD_LAND_DIALOG                 3000
 #define IDC_EDIT_LAND_CODE              3001
 #define IDC_EDIT_LAND_ADRES             3002
