@@ -56,6 +56,31 @@ struct SahibindenListingPayload
     CString LAND_Takas;            // "Takas"
     CString LAND_Cat2;             // customVars cat2 ("Arsa"), dmpData cat2 ("arsa") -> tip tespiti güçlendirir
 
+    // ---- CAR (Vasıta/Otomobil) detay alanları ----
+    CString CAR_Brand;             // "Marka" / dmpData: marka
+    CString CAR_Series;            // "Seri" / dmpData: seri
+    CString CAR_Model;             // "Model" / dmpData: model
+    CString CAR_Year;              // "Yıl" / dmpData: yil
+    CString CAR_Km;                // "KM" / dmpData: km
+    CString CAR_FuelType;          // "Yakıt Tipi" / dmpData: yakit_tipi
+    CString CAR_Transmission;      // "Vites" / dmpData: vites
+    CString CAR_BodyType;          // "Kasa Tipi" / dmpData: kasa_tipi
+    CString CAR_EnginePower;       // "Motor Gücü" / dmpData: motor_gucu
+    CString CAR_EngineVolume;      // "Motor Hacmi" / dmpData: motor_hacmi
+    CString CAR_Drive;             // "Çekiş" / dmpData: cekis
+    CString CAR_Color;             // "Renk" / dmpData: renk
+    CString CAR_Warranty;          // "Garanti" / dmpData: garanti
+    CString CAR_DamageRecord;      // "Ağır Hasar Kayıtlı" / dmpData: agir_hasar_kayitli
+    CString CAR_Plate;             // "Plaka/Uyruk" / dmpData: plaka
+    CString CAR_FromWho;           // "Kimden" / dmpData: kimden
+    CString CAR_Cat2;              // customVars cat2 ("Otomobil"), dmpData cat2
+
+    // ---- VILLA detay alanları (eksik olanlar) ----
+    CString VILLA_OpenArea;        // "Açık Alan m²" / dmpData: acik_alan
+    CString VILLA_TotalFloors;     // "Kat Sayısı" / dmpData: kat_sayisi
+    CString VILLA_Balcony;         // "Balkon" / dmpData: balkon
+    CString VILLA_Elevator;        // "Asansör" / dmpData: asansor
+
 };
 
 class SahibindenImporter
