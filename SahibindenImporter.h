@@ -91,6 +91,9 @@ public:
     //bool ImportFromHtmlString(const CString& url, const std::string& htmlContent, LogFn log);
     CString ExtractIdFromUrl(const CString& url);
 
+    // Fetch property data by property ID
+    std::optional<IlanBilgisi> FetchByIlanNumarasi(const std::wstring& ilanNumarasi);
+
 private:
     // JSON Yöntemi (Hızlı)
     bool ExtractTrackingJson(const std::wstring& html, std::wstring& outJson);

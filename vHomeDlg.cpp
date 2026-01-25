@@ -11,13 +11,13 @@
 
 namespace {
     constexpr int kHomeTabId = 5001;
-    constexpr int kTabHeaderReservePx = 24; // mevcut UI'yi aþaðý itmek için
-    constexpr int kBottomSectionTop = 375;  // Resource.rc'deki çizgi üst sýnýrý
+    constexpr int kTabHeaderReservePx = 24; // mevcut UI'yi aï¿½aï¿½ï¿½ itmek iï¿½in
+    constexpr int kBottomSectionTop = 375;  // Resource.rc'deki ï¿½izgi ï¿½st sï¿½nï¿½rï¿½
 }
 
-// Küçük Yardýmcýlar
+// Kï¿½ï¿½ï¿½k Yardï¿½mcï¿½lar
 namespace {
-    // Güvenli metin okuma
+    // Gï¿½venli metin okuma
     CString GetTextSafe(HWND hDlg, int id) {
         HWND hCtrl = ::GetDlgItem(hDlg, id);
         if (!hCtrl) return _T("");
@@ -27,7 +27,7 @@ namespace {
         ::GetWindowText(hCtrl, buffer.data(), len + 1);
         return CString(buffer.data());
     }
-    // Güvenli metin yazma
+    // Gï¿½venli metin yazma
     void SetTextSafe(HWND hDlg, int id, const CString& text) {
         ::SetDlgItemText(hDlg, id, text);
     }
@@ -40,7 +40,7 @@ CHomeDialog::CHomeDialog(DatabaseManager& dbManagerRef, DialogMode mode, const C
 BOOL CHomeDialog::OnInitDialog() {
     CDialog::OnInitDialog();
 
-    // Seviye-2: tab kontrolünü kur (Genel + Özellikler + Çevre)
+    // Seviye-2: tab kontrolï¿½nï¿½ kur (Genel + ï¿½zellikler + ï¿½evre)
     InitTabs();
 
     OnSetCtrl();
@@ -57,25 +57,25 @@ BOOL CHomeDialog::OnInitDialog() {
         ::SendMessage(GetDlgItem(IDC_COMBO_STATUS), CB_SELECTSTRING, -1, (LPARAM)_T("Aktif"));
     }
     else {
-        SetWindowText(_T("Daire / Ev Düzenle"));
+        SetWindowText(_T("Daire / Ev Dï¿½zenle"));
         if (!m_homeCodeToEdit.IsEmpty()) {
             auto dataMap = m_dbManager.FetchRecordMap(TABLE_NAME_HOME, _T("Home_Code"), m_homeCodeToEdit);
             if (!dataMap.empty()) {
                 m_dbManager.Bind_Data_To_UI(this, TABLE_NAME_HOME, dataMap);
                 if (dataMap.find(_T("Cari_Kod")) != dataMap.end()) m_cariKod = dataMap[_T("Cari_Kod")];
 
-                // Seviye-2: özellik tablarýný DB verisiyle doldur
+                // Seviye-2: ï¿½zellik tablarï¿½nï¿½ DB verisiyle doldur
                 m_featuresPage1.LoadFromMap(dataMap);
                 m_featuresPage2.LoadFromMap(dataMap);
             }
             else {
-                MessageBox(_T("Kayýt bulunamadý!"), _T("Hata"), MB_ICONERROR);
+                MessageBox(_T("Kayï¿½t bulunamadï¿½!"), _T("Hata"), MB_ICONERROR);
             }
         }
     }
     LayoutTabAndPages();
     FixTabFonts();
-    // Yeni kayýtta default olarak boþ özellikler
+    // Yeni kayï¿½tta default olarak boï¿½ ï¿½zellikler
     if (m_dialogMode == INEWUSER)
     {
         std::map<CString, CString> tmp;
@@ -93,10 +93,10 @@ void CHomeDialog::OnOK() {
     // 1. Ana Dialog (Tab-0: Genel) verilerini oku
     m_dbManager.Bind_UI_To_Data(this, TABLE_NAME_HOME, uiData);
 
-    // 2. Özellik Sekmeleri (Tab-1 ve Tab-2) için AYRI map'ler kullan
+    // 2. ï¿½zellik Sekmeleri (Tab-1 ve Tab-2) iï¿½in AYRI map'ler kullan
     std::map<CString, CString> mapPage1, mapPage2;
 
-    // Sayfalarýn Handle'ý varsa (Window oluþmuþsa) verileri çek
+    // Sayfalarï¿½n Handle'ï¿½ varsa (Window oluï¿½muï¿½sa) verileri ï¿½ek
     if (m_featuresPage1.GetHwnd() && ::IsWindow(m_featuresPage1.GetHwnd())) {
         m_featuresPage1.SaveToMap(mapPage1);
     }
@@ -104,12 +104,12 @@ void CHomeDialog::OnOK() {
         m_featuresPage2.SaveToMap(mapPage2);
     }
 
-    // 3. Map verilerini ana uiData map'ine güvenli aktar (Çakýþma Önleme)
-    // Page 1: Cephe ve Ýç Özellikler
+    // 3. Map verilerini ana uiData map'ine gï¿½venli aktar (ï¿½akï¿½ï¿½ma ï¿½nleme)
+    // Page 1: Cephe ve ï¿½ï¿½ ï¿½zellikler
     for (auto const& [key, val] : mapPage1) {
         if (!val.IsEmpty()) uiData[key] = val;
     }
-    // Page 2: Dýþ, Muhit ve Diðer
+    // Page 2: Dï¿½ï¿½, Muhit ve Diï¿½er
     for (auto const& [key, val] : mapPage2) {
         if (!val.IsEmpty()) uiData[key] = val;
     }
@@ -127,7 +127,7 @@ void CHomeDialog::OnOK() {
 
     uiData[_T("Updated_At")] = m_dbManager.GetCurrentIsoUtc();
 
-    // 5. Struct'a dönüþtür ve Kaydet
+    // 5. Struct'a dï¿½nï¿½ï¿½tï¿½r ve Kaydet
     Home_cstr h;
     for (const auto& [key, val] : uiData) {
         DatabaseManager::SetFieldByStringName(h, key, val);
@@ -136,16 +136,16 @@ void CHomeDialog::OnOK() {
     bool success = (m_dialogMode == INEWUSER) ? m_dbManager.InsertGlobal(h) : m_dbManager.UpdateGlobal(h);
 
     if (success) {
-        MessageBox(_T("Kayýt Baþarýlý!"), _T("Bilgi"), MB_ICONINFORMATION);
+        MessageBox(_T("Kayï¿½t Baï¿½arï¿½lï¿½!"), _T("Bilgi"), MB_ICONINFORMATION);
         CDialog::OnOK();
     }
     else {
-        MessageBox(_T("Veritabaný kayýt hatasý!"), _T("Hata"), MB_ICONERROR);
+        MessageBox(_T("Veritabanï¿½ kayï¿½t hatasï¿½!"), _T("Hata"), MB_ICONERROR);
     }
 }
 
 // ============================================================================
-// Seviye-2: Tab Control + Dinamik Özellik Sayfalarý
+// Seviye-2: Tab Control + Dinamik ï¿½zellik Sayfalarï¿½
 // ============================================================================
 
 void CHomeDialog::InitTabs()
@@ -158,7 +158,7 @@ void CHomeDialog::InitTabs()
     RECT rcClient{};
     ::GetClientRect(*this, &rcClient);
 
-    // Tab, tüm üst alaný kapsasýn; alt butonlar sabit kalsýn.
+    // Tab, tï¿½m ï¿½st alanï¿½ kapsasï¿½n; alt butonlar sabit kalsï¿½n.
     RECT rcTab{ 5, 5, rcClient.right - 5, kBottomSectionTop - 5 };
 
     m_hTab = ::CreateWindowEx(0, WC_TABCONTROL, _T(""),
@@ -175,17 +175,17 @@ void CHomeDialog::InitTabs()
     tci.pszText = (LPTSTR)_T("Genel");
     TabCtrl_InsertItem(m_hTab, 0, &tci);
 
-    tci.pszText = (LPTSTR)_T("Özellikler");
+    tci.pszText = (LPTSTR)_T("ï¿½zellikler");
     TabCtrl_InsertItem(m_hTab, 1, &tci);
 
-    tci.pszText = (LPTSTR)_T("Çevre/Detay");
+    tci.pszText = (LPTSTR)_T("ï¿½evre/Detay");
     TabCtrl_InsertItem(m_hTab, 2, &tci);
 
-    // Genel UI'nin tab baþlýðýný kapatmamasý için bir defalýk aþaðý itme
+    // Genel UI'nin tab baï¿½lï¿½ï¿½ï¿½nï¿½ kapatmamasï¿½ iï¿½in bir defalï¿½k aï¿½aï¿½ï¿½ itme
     ShiftGeneralControlsForTabHeader();
     CollectGeneralControls();
 
-    // Tab body alaný
+    // Tab body alanï¿½
     LayoutTabAndPages();
 }
 
@@ -203,7 +203,7 @@ void CHomeDialog::CollectGeneralControls()
         ::GetWindowRect(h, &rc);
         ::MapWindowPoints(nullptr, *this, (LPPOINT)&rc, 2);
 
-        // Üst ana alan: sekmelerle yönetilecek
+        // ï¿½st ana alan: sekmelerle yï¿½netilecek
         if (rc.top < kBottomSectionTop)
             m_generalControls.push_back(h);
     }
@@ -214,7 +214,7 @@ void CHomeDialog::ShiftGeneralControlsForTabHeader()
     if (m_layoutShifted) return;
     m_layoutShifted = true;
 
-    // Tab baþlýðý için üstte ~24px yer aç
+    // Tab baï¿½lï¿½ï¿½ï¿½ iï¿½in ï¿½stte ~24px yer aï¿½
     for (HWND h = ::GetWindow(*this, GW_CHILD); h; h = ::GetWindow(h, GW_HWNDNEXT))
     {
         if (h == m_hTab) continue;
@@ -225,7 +225,7 @@ void CHomeDialog::ShiftGeneralControlsForTabHeader()
         ::GetWindowRect(h, &rc);
         ::MapWindowPoints(nullptr, *this, (LPPOINT)&rc, 2);
 
-        // Görünmez/0x0 kontrolleri elleme
+        // Gï¿½rï¿½nmez/0x0 kontrolleri elleme
         if ((rc.right - rc.left) <= 0 || (rc.bottom - rc.top) <= 0) continue;
 
         if (rc.top >= kBottomSectionTop) continue; // alt bar sabit
@@ -249,19 +249,19 @@ void CHomeDialog::LayoutTabAndPages()
         rcTab.right - rcTab.left, rcTab.bottom - rcTab.top,
         SWP_NOZORDER | SWP_NOACTIVATE);
 
-    // ? DOÐRU: Tab'ýn kendi client rect’i üzerinden body hesapla
+    // ? DOï¿½RU: Tab'ï¿½n kendi client rectï¿½i ï¿½zerinden body hesapla
     RECT rcBody{};
     ::GetClientRect(m_hTab, &rcBody);
-    TabCtrl_AdjustRect(m_hTab, FALSE, &rcBody); // artýk doðru koordinat sisteminde
+    TabCtrl_AdjustRect(m_hTab, FALSE, &rcBody); // artï¿½k doï¿½ru koordinat sisteminde
 
-    // ? DOÐRU: Sayfalarýn parent'ý TAB olmalý
+    // ? DOï¿½RU: Sayfalarï¿½n parent'ï¿½ TAB olmalï¿½
     if (!m_featuresPage1.GetHwnd())
         m_featuresPage1.Create(m_hTab, rcBody, 6001, CHomeFeaturesPage::PageKind::Features1);
 
     if (!m_featuresPage2.GetHwnd())
         m_featuresPage2.Create(m_hTab, rcBody, 6002, CHomeFeaturesPage::PageKind::Features2);
 
-    // ? Sayfalarý tab içinde konumlandýr
+    // ? Sayfalarï¿½ tab iï¿½inde konumlandï¿½r
     ::SetWindowPos(m_featuresPage1, nullptr,
         rcBody.left, rcBody.top,
         rcBody.right - rcBody.left, rcBody.bottom - rcBody.top,
@@ -272,7 +272,7 @@ void CHomeDialog::LayoutTabAndPages()
         rcBody.right - rcBody.left, rcBody.bottom - rcBody.top,
         SWP_NOZORDER | SWP_NOACTIVATE);
 
-    // Ýstersen burada mevcut seçili taba göre görünürlük de güncellenebilir:
+    // ï¿½stersen burada mevcut seï¿½ili taba gï¿½re gï¿½rï¿½nï¿½rlï¿½k de gï¿½ncellenebilir:
     // int sel = (m_hTab ? TabCtrl_GetCurSel(m_hTab) : 0);
     // if (sel < 0) sel = 0;
     // SwitchTab(sel);
@@ -285,7 +285,7 @@ void CHomeDialog::SwitchTab(int index)
     for (HWND h : m_generalControls)
         ::ShowWindow(h, showGeneral ? SW_SHOW : SW_HIDE);
 
-    // Tab-1/2: özellik sayfalarý
+    // Tab-1/2: ï¿½zellik sayfalarï¿½
     ::ShowWindow(m_featuresPage1, (index == 1) ? SW_SHOW : SW_HIDE);
     ::ShowWindow(m_featuresPage2, (index == 2) ? SW_SHOW : SW_HIDE);
 
@@ -296,13 +296,13 @@ void CHomeDialog::SwitchTab(int index)
 void CHomeDialog::OnLoadFromClipboard() {
     CString rawText = GetClipboardText();
     if (rawText.IsEmpty()) {
-        MessageBox(_T("Panoda metin yok!"), _T("Uyarý"), MB_ICONWARNING);
+        MessageBox(_T("Panoda metin yok!"), _T("Uyarï¿½"), MB_ICONWARNING);
         return;
     }
 
     std::map<CString, CString> parsedData = ParseSahibindenText(rawText);
     if (parsedData.empty()) {
-        MessageBox(_T("Metinden veri çýkarýlamadý."), _T("Hata"), MB_ICONERROR);
+        MessageBox(_T("Metinden veri ï¿½ï¿½karï¿½lamadï¿½."), _T("Hata"), MB_ICONERROR);
         return;
     }
 
@@ -314,18 +314,18 @@ void CHomeDialog::OnLoadFromClipboard() {
     for (const auto& [key, val] : schemaData) if (!val.IsEmpty()) currentData[key] = val;
     m_dbManager.Bind_Data_To_UI(this, TABLE_NAME_HOME, currentData);
 
-    MessageBox(_T("Veriler aktarýldý."), _T("Tamam"), MB_ICONINFORMATION);
+    MessageBox(_T("Veriler aktarï¿½ldï¿½."), _T("Tamam"), MB_ICONINFORMATION);
 }
 
 // ============================================================================
-// PARSE FONKSÝYONU (Düzeltilmiþ ve Güçlendirilmiþ)
+// PARSE FONKSï¿½YONU (Dï¿½zeltilmiï¿½ ve Gï¿½ï¿½lendirilmiï¿½)
 // ============================================================================
 std::map<CString, CString> CHomeDialog::ParseSahibindenText(const CString& rawText)
 {
     std::map<CString, CString> out;
     CString text = rawText;
 
-    // Satýr sonlarýný normalize et
+    // Satï¿½r sonlarï¿½nï¿½ normalize et
     text.Replace(_T("\r\n"), _T("\n"));
     text.Replace(_T("\r"), _T("\n"));
     text.Trim();
@@ -338,34 +338,34 @@ std::map<CString, CString> CHomeDialog::ParseSahibindenText(const CString& rawTe
         if (!cLine.IsEmpty()) lines.push_back(cLine);
     }
 
-    // Alias haritasý (Eþanlamlýlar)
+    // Alias haritasï¿½ (Eï¿½anlamlï¿½lar)
     static const std::map<CString, CString> alias = {
-        {_T("Isýtma"), _T("Isýtma Tipi")},
-        {_T("Eþyalý"), _T("Eþyalý mý")},
-        {_T("Site Ýçerisinde"), _T("Site Ýçinde")},
+        {_T("Isï¿½tma"), _T("Isï¿½tma Tipi")},
+        {_T("Eï¿½yalï¿½"), _T("Eï¿½yalï¿½ mï¿½")},
+        {_T("Site ï¿½ï¿½erisinde"), _T("Site ï¿½ï¿½inde")},
         {_T("Aidat (TL)"), _T("Aidat")},
-        // Emlak Tipi ve Ýlan Tarihi'ni aþaðýda özel olarak ele alýyoruz
+        // Emlak Tipi ve ï¿½lan Tarihi'ni aï¿½aï¿½ï¿½da ï¿½zel olarak ele alï¿½yoruz
     };
 
     for (size_t i = 0; i < lines.size(); ++i)
     {
         CString cLine = lines[i];
 
-        // 1?? ADRES (Þehir / Ýlçe / Mahalle)
-        if (cLine.Find(_T('/')) != -1 && cLine.Find(_T("Ýlan No")) == -1 && cLine.Find(_T("TL")) == -1)
+        // 1?? ADRES (ï¿½ehir / ï¿½lï¿½e / Mahalle)
+        if (cLine.Find(_T('/')) != -1 && cLine.Find(_T("ï¿½lan No")) == -1 && cLine.Find(_T("TL")) == -1)
         {
             CString temp = cLine;
             temp.Replace(_T(" / "), _T("/"));
             int p1 = temp.Find(_T('/'));
             int p2 = temp.Find(_T('/'), p1 + 1);
             if (p1 != -1) {
-                out[_T("Þehir")] = temp.Left(p1);
+                out[_T("ï¿½ehir")] = temp.Left(p1);
                 if (p2 != -1) {
-                    out[_T("Ýlçe")] = temp.Mid(p1 + 1, p2 - p1 - 1);
+                    out[_T("ï¿½lï¿½e")] = temp.Mid(p1 + 1, p2 - p1 - 1);
                     out[_T("Mahalle")] = temp.Mid(p2 + 1);
                 }
                 else {
-                    out[_T("Ýlçe")] = temp.Mid(p1 + 1);
+                    out[_T("ï¿½lï¿½e")] = temp.Mid(p1 + 1);
                 }
                 CString addr = temp; addr.Replace(_T("/"), _T(", "));
                 out[_T("Adres")] = addr;
@@ -373,10 +373,10 @@ std::map<CString, CString> CHomeDialog::ParseSahibindenText(const CString& rawTe
             continue;
         }
 
-        // 2?? FÝYAT
+        // 2?? Fï¿½YAT
         if (cLine.Find(_T("TL")) != -1 || cLine.Find(_T("USD")) != -1 || cLine.Find(_T("EUR")) != -1)
         {
-            if (out.find(_T("Fiyat")) == out.end()) { // Sadece ilk fiyatý al
+            if (out.find(_T("Fiyat")) == out.end()) { // Sadece ilk fiyatï¿½ al
                 CString digits;
                 for (int j = 0; j < cLine.GetLength(); ++j) if (_istdigit(cLine[j])) digits += cLine[j];
 
@@ -395,36 +395,36 @@ std::map<CString, CString> CHomeDialog::ParseSahibindenText(const CString& rawTe
             continue;
         }
 
-        // 3?? ÝLAN NO (Özel Blok)
-        if (cLine.Left(7).CompareNoCase(_T("Ýlan No")) == 0)
+        // 3?? ï¿½LAN NO (ï¿½zel Blok)
+        if (cLine.Left(7).CompareNoCase(_T("ï¿½lan No")) == 0)
         {
             CString val = cLine.Mid(7); val.Trim();
-            if (val == _T(":") || val.IsEmpty()) { // Deðer alt satýrda
+            if (val == _T(":") || val.IsEmpty()) { // Deï¿½er alt satï¿½rda
                 if (i + 1 < lines.size()) {
-                    out[_T("Ýlan No")] = lines[i + 1];
+                    out[_T("ï¿½lan No")] = lines[i + 1];
                     i++;
                 }
             }
-            else { // Deðer ayný satýrda (Ýlan No: 12345)
+            else { // Deï¿½er aynï¿½ satï¿½rda (ï¿½lan No: 12345)
                 if (val.Left(1) == _T(":")) val = val.Mid(1);
-                out[_T("Ýlan No")] = val;
+                out[_T("ï¿½lan No")] = val;
             }
             continue;
         }
 
-        // 4?? ÝLAN TARÝHÝ (Özel Blok - Düzeltildi)
-        if (cLine.Left(11).CompareNoCase(_T("Ýlan Tarihi")) == 0)
-            // 4?? ÝLAN TARÝHÝ (Özel Blok - Süper Esnek Versiyon)
+        // 4?? ï¿½LAN TARï¿½Hï¿½ (ï¿½zel Blok - Dï¿½zeltildi)
+        if (cLine.Left(11).CompareNoCase(_T("ï¿½lan Tarihi")) == 0)
+            // 4?? ï¿½LAN TARï¿½Hï¿½ (ï¿½zel Blok - Sï¿½per Esnek Versiyon)
         {
             CString lower = cLine;
             lower.MakeLower();
 
-            // satýrda hem "ilan" hem de "tarihi" geçiyorsa, bunu ilan tarihi satýrý say
+            // satï¿½rda hem "ilan" hem de "tarihi" geï¿½iyorsa, bunu ilan tarihi satï¿½rï¿½ say
             if (lower.Find(_T("ilan")) != -1 && lower.Find(_T("tarihi")) != -1)
             {
                 CString val;
 
-                // Eðer ayný satýrda ":" sonrasý bir þey varsa onu al
+                // Eï¿½er aynï¿½ satï¿½rda ":" sonrasï¿½ bir ï¿½ey varsa onu al
                 int colonPos = cLine.Find(_T(':'));
                 if (colonPos != -1)
                 {
@@ -432,17 +432,17 @@ std::map<CString, CString> CHomeDialog::ParseSahibindenText(const CString& rawTe
                     val.Trim();
                 }
 
-                // Deðer hâlâ boþsa alt satýrdan al (sahibinden genelde böyle yapýyor)
+                // Deï¿½er hï¿½lï¿½ boï¿½sa alt satï¿½rdan al (sahibinden genelde bï¿½yle yapï¿½yor)
                 if (val.IsEmpty() && i + 1 < (int)lines.size())
                 {
                     val = lines[i + 1];
                     val.Trim();
-                    i++;    // alt satýrý da tükettik
+                    i++;    // alt satï¿½rï¿½ da tï¿½kettik
                 }
 
                 if (!val.IsEmpty())
                 {
-                    out[_T("Ýlan Tarihi")] = val;
+                    out[_T("ï¿½lan Tarihi")] = val;
                 }
 
                 continue;
@@ -450,17 +450,17 @@ std::map<CString, CString> CHomeDialog::ParseSahibindenText(const CString& rawTe
         }
 
 
-        // 5?? EMLAK TÝPÝ (Özel Blok - Düzeltildi)
+        // 5?? EMLAK Tï¿½Pï¿½ (ï¿½zel Blok - Dï¿½zeltildi)
         if (cLine.Left(10).CompareNoCase(_T("Emlak Tipi")) == 0)
         {
             CString val = cLine.Mid(10); val.Trim();
-            if (val == _T(":") || val.IsEmpty()) { // Deðer alt satýrda
+            if (val == _T(":") || val.IsEmpty()) { // Deï¿½er alt satï¿½rda
                 if (i + 1 < lines.size()) {
                     out[_T("PropertyType")] = lines[i + 1];
                     i++;
                 }
             }
-            else { // Deðer ayný satýrda (Emlak Tipi Satýlýk Daire)
+            else { // Deï¿½er aynï¿½ satï¿½rda (Emlak Tipi Satï¿½lï¿½k Daire)
                 if (val.Left(1) == _T(":")) val = val.Mid(1);
                 val.Trim();
                 out[_T("PropertyType")] = val;
@@ -468,23 +468,23 @@ std::map<CString, CString> CHomeDialog::ParseSahibindenText(const CString& rawTe
             continue;
         }
 
-        // 6?? DÝÐER ALANLAR (Genel Tarama)
+        // 6?? Dï¿½ï¿½ER ALANLAR (Genel Tarama)
         CString key = cLine;
         bool handled = false;
 
-        // Alias kontrolü
+        // Alias kontrolï¿½
         if (alias.find(key) != alias.end()) key = alias.at(key);
 
-        // Bilinen anahtarlar listesi (Eðer alias deðilse)
+        // Bilinen anahtarlar listesi (Eï¿½er alias deï¿½ilse)
         CString knownKeys[] = {
-            _T("Oda Sayýsý"), _T("Bina Yaþý"), _T("Bulunduðu Kat"), _T("Kat Sayýsý"),
-            _T("Isýtma"), _T("Banyo Sayýsý"), _T("Mutfak"), _T("Balkon"), _T("Asansör"),
-            _T("Otopark"), _T("Eþyalý"), _T("Kullaným Durumu"), _T("Site Ýçerisinde"),
-            _T("Site Adý"), _T("Aidat"), _T("Krediye Uygun"), _T("Tapu Durumu"),
-            _T("Kimden"), _T("Takas"), _T("m² (Brüt)"), _T("m² (Net)")
+            _T("Oda Sayï¿½sï¿½"), _T("Bina Yaï¿½ï¿½"), _T("Bulunduï¿½u Kat"), _T("Kat Sayï¿½sï¿½"),
+            _T("Isï¿½tma"), _T("Banyo Sayï¿½sï¿½"), _T("Mutfak"), _T("Balkon"), _T("Asansï¿½r"),
+            _T("Otopark"), _T("Eï¿½yalï¿½"), _T("Kullanï¿½m Durumu"), _T("Site ï¿½ï¿½erisinde"),
+            _T("Site Adï¿½"), _T("Aidat"), _T("Krediye Uygun"), _T("Tapu Durumu"),
+            _T("Kimden"), _T("Takas"), _T("mï¿½ (Brï¿½t)"), _T("mï¿½ (Net)")
         };
 
-        // Satýrýn kendisi bir anahtar mý? (Alt alta durumu)
+        // Satï¿½rï¿½n kendisi bir anahtar mï¿½? (Alt alta durumu)
         for (const auto& k : knownKeys) {
             if (key.CompareNoCase(k) == 0) {
                 if (i + 1 < lines.size()) {
@@ -501,8 +501,8 @@ std::map<CString, CString> CHomeDialog::ParseSahibindenText(const CString& rawTe
         }
         if (handled) continue;
 
-        // Satýr "Anahtar: Deðer" veya "Anahtar Deðer" formatýnda mý? (Yan yana durumu)
-        // Örn: "Oda Sayýsý 3+1"
+        // Satï¿½r "Anahtar: Deï¿½er" veya "Anahtar Deï¿½er" formatï¿½nda mï¿½? (Yan yana durumu)
+        // ï¿½rn: "Oda Sayï¿½sï¿½ 3+1"
         for (const auto& k : knownKeys) {
             if (cLine.Left(k.GetLength()).CompareNoCase(k) == 0) {
                 CString val = cLine.Mid(k.GetLength());
@@ -522,7 +522,7 @@ std::map<CString, CString> CHomeDialog::ParseSahibindenText(const CString& rawTe
         }
     }
 
-    // 7?? Fiyat / m² hesapla (Güçlendirilmiþ)
+    // 7?? Fiyat / mï¿½ hesapla (Gï¿½ï¿½lendirilmiï¿½)
     auto ToNumber = [](CString s) -> double
         {
             CString digits;
@@ -538,9 +538,9 @@ std::map<CString, CString> CHomeDialog::ParseSahibindenText(const CString& rawTe
             return _tstof(digits); // "3095000" -> 3095000.0
         };
 
-    // Hem Fiyat hem de Net m² varsa hesapla
+    // Hem Fiyat hem de Net mï¿½ varsa hesapla
     auto itFiyat = out.find(_T("Fiyat"));
-    auto itNet = out.find(_T("m² (Net)"));
+    auto itNet = out.find(_T("mï¿½ (Net)"));
 
     if (itFiyat != out.end() && itNet != out.end())
     {
@@ -549,16 +549,16 @@ std::map<CString, CString> CHomeDialog::ParseSahibindenText(const CString& rawTe
 
         if (fiyat > 0.0 && net > 0.0)
         {
-            double per = fiyat / net;   // m² fiyatý
+            double per = fiyat / net;   // mï¿½ fiyatï¿½
             CString perStr;
-            perStr.Format(_T("%.0f"), per);   // tam sayý olarak
+            perStr.Format(_T("%.0f"), per);   // tam sayï¿½ olarak
 
-            // Binlik ayraç ekle: 30950 -> 30.950
+            // Binlik ayraï¿½ ekle: 30950 -> 30.950
             int len = perStr.GetLength();
             for (int k = len - 3; k > 0; k -= 3)
                 perStr.Insert(k, _T("."));
 
-            out[_T("Fiyat/m²")] = perStr;
+            out[_T("Fiyat/mï¿½")] = perStr;
         }
     }
 
@@ -571,44 +571,44 @@ std::map<CString, CString> CHomeDialog::NormalizeToSchemaMap(const std::map<CStr
     std::map<CString, CString> schema;
     auto get = [&](const CString& k) { auto it = rawFields.find(k); return (it != rawFields.end()) ? it->second : CString(); };
 
-    schema[_T("ListingNo")] = get(_T("Ýlan No"));
-    schema[_T("ListingDate")] = get(_T("Ýlan Tarihi"));
+    schema[_T("ListingNo")] = get(_T("ï¿½lan No"));
+    schema[_T("ListingDate")] = get(_T("ï¿½lan Tarihi"));
     schema[_T("Price")] = get(_T("Fiyat"));
     schema[_T("Currency")] = get(_T("Para Birimi"));
-    schema[_T("PricePerM2")] = get(_T("Fiyat/m²"));
+    schema[_T("PricePerM2")] = get(_T("Fiyat/mï¿½"));
 
-    schema[_T("City")] = get(_T("Þehir"));
-    schema[_T("District")] = get(_T("Ýlçe"));
+    schema[_T("City")] = get(_T("ï¿½ehir"));
+    schema[_T("District")] = get(_T("ï¿½lï¿½e"));
     schema[_T("Neighborhood")] = get(_T("Mahalle"));
     schema[_T("Address")] = get(_T("Adres"));
 
-    // PropertyType doðrudan geliyor
+    // PropertyType doï¿½rudan geliyor
     schema[_T("PropertyType")] = get(_T("PropertyType"));
 
-    schema[_T("RoomCount")] = get(_T("Oda Sayýsý"));
-    schema[_T("NetArea")] = get(_T("m² (Net)"));
-    schema[_T("GrossArea")] = get(_T("m² (Brüt)"));
-    schema[_T("BuildingAge")] = get(_T("Bina Yaþý"));
-    schema[_T("Floor")] = get(_T("Bulunduðu Kat"));
-    schema[_T("TotalFloor")] = get(_T("Kat Sayýsý"));
+    schema[_T("RoomCount")] = get(_T("Oda Sayï¿½sï¿½"));
+    schema[_T("NetArea")] = get(_T("mï¿½ (Net)"));
+    schema[_T("GrossArea")] = get(_T("mï¿½ (Brï¿½t)"));
+    schema[_T("BuildingAge")] = get(_T("Bina Yaï¿½ï¿½"));
+    schema[_T("Floor")] = get(_T("Bulunduï¿½u Kat"));
+    schema[_T("TotalFloor")] = get(_T("Kat Sayï¿½sï¿½"));
 
-    schema[_T("HeatingType")] = get(_T("Isýtma Tipi"));
-    schema[_T("BathroomCount")] = get(_T("Banyo Sayýsý"));
+    schema[_T("HeatingType")] = get(_T("Isï¿½tma Tipi"));
+    schema[_T("BathroomCount")] = get(_T("Banyo Sayï¿½sï¿½"));
     schema[_T("KitchenType")] = get(_T("Mutfak"));
 
     schema[_T("Balcony")] = get(_T("Balkon"));
-    schema[_T("Elevator")] = get(_T("Asansör"));
+    schema[_T("Elevator")] = get(_T("Asansï¿½r"));
     schema[_T("Parking")] = get(_T("Otopark"));
-    schema[_T("Furnished")] = get(_T("Eþyalý mý"));
-    schema[_T("InSite")] = get(_T("Site Ýçinde"));
-    schema[_T("SiteName")] = get(_T("Site Adý"));
+    schema[_T("Furnished")] = get(_T("Eï¿½yalï¿½ mï¿½"));
+    schema[_T("InSite")] = get(_T("Site ï¿½ï¿½inde"));
+    schema[_T("SiteName")] = get(_T("Site Adï¿½"));
     schema[_T("Dues")] = get(_T("Aidat"));
 
     schema[_T("CreditEligible")] = get(_T("Krediye Uygun"));
     schema[_T("DeedStatus")] = get(_T("Tapu Durumu"));
     schema[_T("SellerType")] = get(_T("Kimden"));
     schema[_T("Swap")] = get(_T("Takas"));
-    schema[_T("UsageStatus")] = get(_T("Kullaným Durumu"));
+    schema[_T("UsageStatus")] = get(_T("Kullanï¿½m Durumu"));
 
     schema[_T("WebsiteName")] = _T("sahibinden.com");
     if (schema[_T("Status")].IsEmpty()) schema[_T("Status")] = _T("Aktif");
@@ -618,7 +618,7 @@ std::map<CString, CString> CHomeDialog::NormalizeToSchemaMap(const std::map<CStr
 
 void CHomeDialog::SanitizeDataMap(std::map<CString, CString>& dataMap)
 {
-    // Veritabaný sayýsal olduðu için kayýt sýrasýnda boþ metin gitmemeli
+    // Veritabanï¿½ sayï¿½sal olduï¿½u iï¿½in kayï¿½t sï¿½rasï¿½nda boï¿½ metin gitmemeli
     auto CleanNum = [&](const CString& key) {
         if (dataMap.find(key) == dataMap.end()) return;
         CString v = dataMap[key];
@@ -643,7 +643,7 @@ void CHomeDialog::SanitizeDataMap(std::map<CString, CString>& dataMap)
         CString v = dataMap[key]; v.Trim();
         if (v.CompareNoCase(_T("Evet")) == 0 || v.CompareNoCase(_T("Var")) == 0 || v == _T("1") || v.CompareNoCase(_T("True")) == 0)
             dataMap[key] = _T("Var");
-        else if (v.CompareNoCase(_T("Hayýr")) == 0 || v.CompareNoCase(_T("Yok")) == 0 || v == _T("0") || v.CompareNoCase(_T("False")) == 0)
+        else if (v.CompareNoCase(_T("Hayï¿½r")) == 0 || v.CompareNoCase(_T("Yok")) == 0 || v == _T("0") || v.CompareNoCase(_T("False")) == 0)
             dataMap[key] = _T("Yok");
         };
 
@@ -656,17 +656,17 @@ void CHomeDialog::SanitizeDataMap(std::map<CString, CString>& dataMap)
 
 void CHomeDialog::OnSetCtrl() {
     std::vector<CString> varyok = { _T("Var"), _T("Yok") };
-    std::vector<CString> yesno = { _T("Evet"), _T("Hayýr") };
-    std::vector<CString> types = { _T("Satýlýk Daire"), _T("Kiralýk Daire"), _T("Satýlýk Ýþyeri"), _T("Kiralýk Ýþyeri"), _T("Satýlýk Arsa"), _T("Kiralýk Arsa"), _T("Satýlýk Villa"), _T("Kiralýk Villa"), _T("Satýlýk Yazlýk"), _T("Kiralýk Yazlýk"), _T("Satýlýk Bina"), _T("Devren Satýlýk") };
-    std::vector<CString> isitma = { _T("Kombi (Doðalgaz)"), _T("Kombi (Elektrik)"), _T("Merkezi"), _T("Merkezi (Pay Ölçer)"), _T("Soba"), _T("Doðalgaz Sobasý"), _T("Kat Kaloriferi"), _T("Yerden Isýtma"), _T("Klima"), _T("Yok") };
-    std::vector<CString> mutfak = { _T("Kapalý"), _T("Açýk (Amerikan)"), _T("Ankastre") };
-    std::vector<CString> tapu = { _T("Kat Mülkiyetli"), _T("Kat Ýrtifaklý"), _T("Hisseli"), _T("Müstakil"), _T("Arsa"), _T("Bilinmiyor") };
-    std::vector<CString> kimden = { _T("Sahibinden"), _T("Emlak Ofisinden"), _T("Bankadan"), _T("Ýnþaat Firmasýndan") };
+    std::vector<CString> yesno = { _T("Evet"), _T("Hayï¿½r") };
+    std::vector<CString> types = { _T("Satï¿½lï¿½k Daire"), _T("Kiralï¿½k Daire"), _T("Satï¿½lï¿½k ï¿½ï¿½yeri"), _T("Kiralï¿½k ï¿½ï¿½yeri"), _T("Satï¿½lï¿½k Arsa"), _T("Kiralï¿½k Arsa"), _T("Satï¿½lï¿½k Villa"), _T("Kiralï¿½k Villa"), _T("Satï¿½lï¿½k Yazlï¿½k"), _T("Kiralï¿½k Yazlï¿½k"), _T("Satï¿½lï¿½k Bina"), _T("Devren Satï¿½lï¿½k") };
+    std::vector<CString> isitma = { _T("Kombi (Doï¿½algaz)"), _T("Kombi (Elektrik)"), _T("Merkezi"), _T("Merkezi (Pay ï¿½lï¿½er)"), _T("Soba"), _T("Doï¿½algaz Sobasï¿½"), _T("Kat Kaloriferi"), _T("Yerden Isï¿½tma"), _T("Klima"), _T("Yok") };
+    std::vector<CString> mutfak = { _T("Kapalï¿½"), _T("Aï¿½ï¿½k (Amerikan)"), _T("Ankastre") };
+    std::vector<CString> tapu = { _T("Kat Mï¿½lkiyetli"), _T("Kat ï¿½rtifaklï¿½"), _T("Hisseli"), _T("Mï¿½stakil"), _T("Arsa"), _T("Bilinmiyor") };
+    std::vector<CString> kimden = { _T("Sahibinden"), _T("Emlak Ofisinden"), _T("Bankadan"), _T("ï¿½nï¿½aat Firmasï¿½ndan") };
     std::vector<CString> currency = { _T("TL"), _T("USD"), _T("EUR"), _T("GBP") };
-    std::vector<CString> usage = { _T("Boþ"), _T("Kiracýlý"), _T("Mülk Sahibi") };
-    std::vector<CString> status = { _T("Aktif"), _T("Opsiyonlu"), _T("Satýldý"), _T("Kiralandý"), _T("Pasif") };
-    std::vector<CString> otopark = { _T("Açýk Otopark"), _T("Kapalý"), _T("Açýk & Kapalý Otopark"), _T("Yok") };
-    std::vector<CString> website = { _T("sahibinden.com"), _T("hepsiemlak"), _T("emlakjet"), _T("zingat"), _T("Diðer") };
+    std::vector<CString> usage = { _T("Boï¿½"), _T("Kiracï¿½lï¿½"), _T("Mï¿½lk Sahibi") };
+    std::vector<CString> status = { _T("Aktif"), _T("Opsiyonlu"), _T("Satï¿½ldï¿½"), _T("Kiralandï¿½"), _T("Pasif") };
+    std::vector<CString> otopark = { _T("Aï¿½ï¿½k Otopark"), _T("Kapalï¿½"), _T("Aï¿½ï¿½k & Kapalï¿½ Otopark"), _T("Yok") };
+    std::vector<CString> website = { _T("sahibinden.com"), _T("hepsiemlak"), _T("emlakjet"), _T("zingat"), _T("Diï¿½er") };
 
     FillCombo(IDC_COMBO_BALCONY, varyok);
     FillCombo(IDC_COMBO_ELEVATOR, varyok);
@@ -707,6 +707,11 @@ CString CHomeDialog::GetClipboardText() {
 INT_PTR CHomeDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     if (uMsg == WM_COMMAND && LOWORD(wParam) == IDC_BTN_LOAD_CLIPBOARD) {
         OnLoadFromClipboard();
+        return TRUE;
+    }
+
+    if (uMsg == WM_COMMAND && LOWORD(wParam) == IDC_BUTTON_ILANBILGIAL) {
+        OnIlanBilgileriniAl();
         return TRUE;
     }
 
@@ -756,7 +761,7 @@ INT_PTR CHomeDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     if (uMsg == WM_SIZE)
     {
         LayoutTabAndPages();
-        return FALSE; // default iþlemler devam edebilir
+        return FALSE; // default iï¿½lemler devam edebilir
     }
     return CDialog::DialogProc(uMsg, wParam, lParam);
 }
@@ -766,8 +771,8 @@ void CHomeDialog::UpdateScrollInfo()
     CRect rc;
     rc =  GetClientRect();
 
-    // Ýçerik yüksekliðini hesapla (Örn: Kontrollerin bittiði yer)
-    // Eðer kontrolleriniz dinamikse burayý 600-800 gibi bir deðer yapabilirsiniz.
+    // ï¿½ï¿½erik yï¿½ksekliï¿½ini hesapla (ï¿½rn: Kontrollerin bittiï¿½i yer)
+    // Eï¿½er kontrolleriniz dinamikse burayï¿½ 600-800 gibi bir deï¿½er yapabilirsiniz.
     int nContentHeight = 650;
     int nContentWidth = 550;
 
@@ -810,11 +815,11 @@ void CHomeDialog::FixTabFonts()
     if (!m_hUiFont)
         m_hUiFont = (HFONT)::GetStockObject(DEFAULT_GUI_FONT);
 
-    // 2) Tab kontrolüne uygula
+    // 2) Tab kontrolï¿½ne uygula
     if (m_hTab)
         ::SendMessage(m_hTab, WM_SETFONT, (WPARAM)m_hUiFont, TRUE);
 
-    // 3) Tab sayfalarýna ve içindeki dinamik kontrollere uygula
+    // 3) Tab sayfalarï¿½na ve iï¿½indeki dinamik kontrollere uygula
     if (m_featuresPage1.GetHwnd())
         ApplyFontRecursive(m_featuresPage1, m_hUiFont);
 
@@ -822,7 +827,53 @@ void CHomeDialog::FixTabFonts()
         ApplyFontRecursive(m_featuresPage2, m_hUiFont);
 }
 
+// Ä°lan Bilgilerini Al button click handler
+void CHomeDialog::OnIlanBilgileriniAl() {
+    CString ilanNumarasi;
+    GetDlgItemText(IDC_EDIT_ILANNUMARASI, ilanNumarasi);
 
+    if (ilanNumarasi.IsEmpty()) {
+        MessageBox(_T("Ä°lan numarasÄ±nÄ± girmelisiniz!"), _T("Hata"), MB_ICONERROR);
+        return;
+    }
+
+    SahibindenImporter importer;
+    auto ilanBilgisi = importer.FetchByIlanNumarasi(std::wstring(ilanNumarasi));
+
+    if (ilanBilgisi) {
+        // Map the fetched data to dialog controls
+        // For now, we'll populate available fields
+        // Note: The actual field mappings depend on the available controls
+        
+        // Set Title/Description to General Notes if available
+        if (!ilanBilgisi->Baslik.empty()) {
+            SetDlgItemText(IDC_EDIT_NOTE_GENERAL, ilanBilgisi->Baslik.c_str());
+        }
+        
+        // Set Price if available
+        if (!ilanBilgisi->Fiyat.empty()) {
+            SetDlgItemText(ID_EDIT_FIYAT, ilanBilgisi->Fiyat.c_str());
+        }
+        
+        // Append Description to internal notes if available
+        if (!ilanBilgisi->Aciklama.empty()) {
+            CString currentNotes;
+            GetDlgItemText(IDC_EDIT_NOTE_INTERNAL, currentNotes);
+            if (!currentNotes.IsEmpty()) {
+                currentNotes += _T("\r\n");
+            }
+            currentNotes += ilanBilgisi->Aciklama.c_str();
+            SetDlgItemText(IDC_EDIT_NOTE_INTERNAL, currentNotes);
+        }
+        
+        // Also set the Ä°lan No field
+        SetDlgItemText(IDC_EDIT_ILAN_NO, ilanNumarasi);
+        
+        MessageBox(_T("Ä°lan bilgileri baÅŸarÄ±yla alÄ±ndÄ±!"), _T("Bilgi"), MB_ICONINFORMATION);
+    } else {
+        MessageBox(_T("Ä°lan bilgileri alÄ±namadÄ±! LÃ¼tfen ilan numarasÄ±nÄ± kontrol edin."), _T("Hata"), MB_ICONERROR);
+    }
+}
 
 
 
