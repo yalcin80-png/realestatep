@@ -14,7 +14,7 @@ public:
     virtual ~GdiRentalLayout();
 
     virtual void SetData(const std::vector<std::pair<CString, CString>>& fields) override;
-    virtual int  GetTotalPages() const override { return 1; }
+    virtual int  GetTotalPages() const override { return 3; } // 3 Sayfa: Bilgiler, Maddeler, İmzalar
     virtual void Render(IDrawContext& ctx, int pageNo) override;
 
 private:
