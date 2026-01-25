@@ -252,6 +252,10 @@ bool SahibindenImporter::ImportFromJsonAndHtmlString(const CString& url,
             payload.LAND_Takas = PickFirstW(customVars, { L"Takas" }, dmpData, {});
 
             // ---- CAR (Vasıta/Otomobil) teknik alanlar ----
+            // NOTE: Some keys like "Kimden" are shared across property types.
+            // We extract to both specific (CAR_FromWho) and generic (sellerType) fields
+            // to ensure data capture regardless of type detection. SaveToDatabase()
+            // uses the specific field if available, otherwise falls back to generic.
             payload.CAR_Cat2 = PickFirstW(customVars, { L"cat2" }, dmpData, { L"cat2" });
             payload.CAR_Brand = PickFirstW(customVars, { L"Marka", L"Brand" }, dmpData, { L"marka", L"brand" });
             payload.CAR_Series = PickFirstW(customVars, { L"Seri", L"Series" }, dmpData, { L"seri", L"series" });
@@ -271,6 +275,9 @@ bool SahibindenImporter::ImportFromJsonAndHtmlString(const CString& url,
             payload.CAR_FromWho = PickFirstW(customVars, { L"Kimden" }, dmpData, { L"kimden" });
 
             // ---- VILLA detay alanları (eksik olanlar) ----
+            // NOTE: Keys like "Kat Sayısı", "Balkon", "Asansör" are also used for generic fields.
+            // Villa-specific variants allow proper data mapping in SaveToDatabase() where
+            // Villa properties prefer VILLA_* fields, while Home properties use generic fields.
             payload.VILLA_OpenArea = PickFirstW(customVars, { L"Açık Alan m²", L"Acik Alan m2", L"Açık Alan", L"Open Area" }, dmpData, { L"acik_alan", L"open_area" });
             payload.VILLA_TotalFloors = PickFirstW(customVars, { L"Kat Sayısı" }, dmpData, { L"kat_sayisi" });
             payload.VILLA_Balcony = PickFirstW(customVars, { L"Balkon" }, dmpData, { L"balkon" });
@@ -651,6 +658,7 @@ bool SahibindenImporter::ParseTrackingJson(const CString& url, const std::wstrin
         p.LAND_Takas = PickFirstW(customVars, { L"Takas" }, dmpData, {});
 
         // ---- CAR (Vasıta/Otomobil) teknik alanlar ----
+        // NOTE: Shared keys allow data capture for all property types
         p.CAR_Cat2 = PickFirstW(customVars, { L"cat2" }, dmpData, { L"cat2" });
         p.CAR_Brand = PickFirstW(customVars, { L"Marka", L"Brand" }, dmpData, { L"marka", L"brand" });
         p.CAR_Series = PickFirstW(customVars, { L"Seri", L"Series" }, dmpData, { L"seri", L"series" });
@@ -670,6 +678,7 @@ bool SahibindenImporter::ParseTrackingJson(const CString& url, const std::wstrin
         p.CAR_FromWho = PickFirstW(customVars, { L"Kimden" }, dmpData, { L"kimden" });
 
         // ---- VILLA detay alanları (eksik olanlar) ----
+        // NOTE: Allows proper Villa-specific data mapping with fallback to generic fields
         p.VILLA_OpenArea = PickFirstW(customVars, { L"Açık Alan m²", L"Acik Alan m2", L"Açık Alan", L"Open Area" }, dmpData, { L"acik_alan", L"open_area" });
         p.VILLA_TotalFloors = PickFirstW(customVars, { L"Kat Sayısı" }, dmpData, { L"kat_sayisi" });
         p.VILLA_Balcony = PickFirstW(customVars, { L"Balkon" }, dmpData, { L"balkon" });
