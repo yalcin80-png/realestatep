@@ -14,6 +14,16 @@ namespace {
     constexpr int kHomeTabId = 5001;
     constexpr int kTabHeaderReservePx = 24; // mevcut UI'yi a�a�� itmek i�in
     constexpr int kBottomSectionTop = 375;  // Resource.rc'deki �izgi �st s�n�r�
+    
+    // Property fetch timer constants
+    constexpr UINT_PTR kPropertyFetchTimerId = 9999;
+    constexpr DWORD kPropertyFetchDelayMs = 3000; // 3 seconds
+    
+    // Browser positioning constants (off-screen)
+    constexpr int kBrowserOffScreenLeft = -10;
+    constexpr int kBrowserOffScreenTop = -10;
+    constexpr int kBrowserOffScreenRight = -5;
+    constexpr int kBrowserOffScreenBottom = -5;
 }
 
 // K���k Yard�mc�lar
@@ -31,6 +41,15 @@ namespace {
     // G�venli metin yazma
     void SetTextSafe(HWND hDlg, int id, const CString& text) {
         ::SetDlgItemText(hDlg, id, text);
+    }
+    
+    // Helper function to convert wstring to UTF-8 string
+    std::string WStringToUtf8(const std::wstring& wstr) {
+        if (wstr.empty()) return {};
+        int len = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.size(), nullptr, 0, nullptr, nullptr);
+        std::string utf8(len, '\0');
+        WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.size(), &utf8[0], len, nullptr, nullptr);
+        return utf8;
     }
 }
 
@@ -729,28 +748,16 @@ INT_PTR CHomeDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
     }
     
     // Handle timer for property data fetching
-    if (uMsg == WM_TIMER && wParam == 9999) {
-        ::KillTimer(*this, 9999);
+    if (uMsg == WM_TIMER && wParam == kPropertyFetchTimerId) {
+        ::KillTimer(*this, kPropertyFetchTimerId);
         
         // Now fetch JSON and HTML from the loaded page
         m_browser.GetListingJSON([this](std::wstring jsonText) {
             // Got JSON, now get HTML
             m_browser.GetSourceCode([this, jsonText](std::wstring htmlText) {
-                // Convert to UTF-8
-                std::string utf8Json;
-                std::string utf8Html;
-                
-                if (!jsonText.empty()) {
-                    int len = WideCharToMultiByte(CP_UTF8, 0, jsonText.c_str(), (int)jsonText.size(), nullptr, 0, nullptr, nullptr);
-                    utf8Json.resize(len);
-                    WideCharToMultiByte(CP_UTF8, 0, jsonText.c_str(), (int)jsonText.size(), &utf8Json[0], len, nullptr, nullptr);
-                }
-                
-                if (!htmlText.empty()) {
-                    int len = WideCharToMultiByte(CP_UTF8, 0, htmlText.c_str(), (int)htmlText.size(), nullptr, 0, nullptr, nullptr);
-                    utf8Html.resize(len);
-                    WideCharToMultiByte(CP_UTF8, 0, htmlText.c_str(), (int)htmlText.size(), &utf8Html[0], len, nullptr, nullptr);
-                }
+                // Convert to UTF-8 using helper function
+                std::string utf8Json = WStringToUtf8(jsonText);
+                std::string utf8Html = WStringToUtf8(htmlText);
                 
                 // Construct URL
                 CString url;
@@ -899,8 +906,13 @@ void CHomeDialog::OnIlanBilgileriniAl() {
 void CHomeDialog::InitBrowserIfNeeded() {
     if (!m_browserInitialized) {
         // Create a hidden browser window for fetching data
-        // Position it off-screen or very small
-        RECT rc = { -10, -10, -5, -5 };
+        // Position it off-screen
+        RECT rc = { 
+            kBrowserOffScreenLeft, 
+            kBrowserOffScreenTop, 
+            kBrowserOffScreenRight, 
+            kBrowserOffScreenBottom 
+        };
         m_browser.Create(*this, rc);
         m_browser.InitBrowser(*this);
         m_browserInitialized = true;
@@ -919,8 +931,7 @@ void CHomeDialog::FetchPropertyData(const CString& ilanNumarasi) {
     m_browser.Navigate(url);
     
     // Wait for page to load, then fetch JSON and HTML
-    // Use a small delay to allow page to fully load
-    ::SetTimer(*this, 9999, 3000, nullptr); // 3 second delay
+    ::SetTimer(*this, kPropertyFetchTimerId, kPropertyFetchDelayMs, nullptr);
 }
 
 void CHomeDialog::OnPropertyDataFetched(const CString& url, bool success) {
