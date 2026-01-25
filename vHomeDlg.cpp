@@ -329,27 +329,38 @@ void CHomeDialog::OnFetchListingClicked() {
     CString url;
     url.Format(_T("https://www.sahibinden.com/ilan/%s"), listingNo);
 
-    // 3. Kullanıcıya bilgi ver - gerçek implementasyon için WebView2 gerekli
+    // 3. Kullanıcıya rehberlik et
     CString msg;
-    msg.Format(_T("İlan No: %s\n\n")
-               _T("Bu özellik tam olarak çalışması için WebView2 entegrasyonu gerektirir.\n\n")
-               _T("Şu anda 'Panodan Yükle' butonunu kullanarak Sahibinden'den kopyaladığınız ")
-               _T("ilan metnini yapıştırabilirsiniz.\n\n")
-               _T("Gelecek güncellemede bu buton otomatik olarak ilan verilerini çekecektir."),
-               listingNo);
+    msg.Format(_T("İlan No: %s\n")
+               _T("URL: %s\n\n")
+               _T("Otomatik veri çekme için iki seçeneğiniz var:\n\n")
+               _T("1. HAREKETSİZ İLANLAR İÇİN:\n")
+               _T("   • Bu dialogu kapatın\n")
+               _T("   • Ana menüden 'Araçlar > Sahibinden İçe Aktar' seçin\n")
+               _T("   • İlan URL'sini girin ve 'Veri Çek' butonuna tıklayın\n")
+               _T("   • Ardından bu dialogu açıp kaydı düzenleyin\n\n")
+               _T("2. EL İLE KOPYALA-YAPIŞTIR:\n")
+               _T("   • Sahibinden'den ilan metnini kopyalayın\n")
+               _T("   • 'Panodan Yükle' butonuna tıklayın\n\n")
+               _T("Gelecek sürümde bu buton otomatik çekme yapacak."),
+               listingNo, url);
     
-    MessageBox(msg, _T("İlan Bilgisi"), MB_ICONINFORMATION);
+    MessageBox(msg, _T("İlan Bilgisi Nasıl Alınır?"), MB_ICONINFORMATION);
 
     // NOT: Tam implementasyon için gerekli adımlar:
-    // 1. WebView2 ile sayfayı aç: https://www.sahibinden.com/ilan/[listingNo]
-    // 2. JavaScript ile gaPageViewTrackingJson@data-json'dan JSON'u al
-    // 3. HTML source'u al
-    // 4. SahibindenImporter pattern'ini kullan ama SaveToDatabase yerine:
-    //    - SahibindenListingPayload'ı doldur
-    //    - Payload'dan map oluştur
-    //    - m_dbManager.Bind_Data_To_UI ile kontrollere yükle
-    // 5. m_featuresPage1.LoadFromMap() ve m_featuresPage2.LoadFromMap() çağır
-    // 6. Kullanıcı KAYDET'e basarsa OnOK() ile DB'ye kaydet
+    // SEÇENEK A: Mevcut SahibindenImportDlg'yi kullan (ama save yapıyor)
+    // SEÇENEK B: Yeni bir non-modal browser dialog oluştur:
+    //   1. WebView2 ile sayfayı aç: https://www.sahibinden.com/ilan/[listingNo]
+    //   2. JavaScript ile gaPageViewTrackingJson@data-json'dan JSON'u al
+    //   3. HTML source'u al
+    //   4. SahibindenImporter parsing logic'ini kullan ama SaveToDatabase çağırma:
+    //      - ParseTrackingJson ile SahibindenListingPayload doldur
+    //      - ExtractFeaturesFromHtml ile HTML'den özellikleri al
+    //      - Payload'ı Home_cstr'a dönüştür
+    //   5. Dönüştürülen veriyi map'e çevir
+    //   6. m_dbManager.Bind_Data_To_UI(this, TABLE_NAME_HOME, dataMap) ile kontrollere yükle
+    //   7. m_featuresPage1.LoadFromMap() ve m_featuresPage2.LoadFromMap() çağır
+    //   8. Kullanıcı KAYDET'e basarsa OnOK() ile DB'ye kaydet
 }
 
 // ============================================================================
