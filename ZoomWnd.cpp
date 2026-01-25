@@ -390,6 +390,12 @@ LRESULT CZoomWnd::OnWheelTurn(WPARAM wParam, LPARAM)
 {
     bool bZoomIn = ((short)HIWORD(wParam) > 0);
     bZoomIn ? ZoomIn() : ZoomOut();
+    
+    // Ana pencereyi bilgilendir (zoom değişti)
+    HWND hParent = ::GetParent(*this);
+    if (hParent)
+        ::PostMessage(hParent, WM_USER + 102, 0, 0); // Zoom değişti mesajı
+    
     return TRUE;
 }
 
@@ -588,6 +594,11 @@ void CZoomWnd::ZoomIn()
     AdjustRectPlacement();
     ::InvalidateRect(*this, nullptr, TRUE);
     ::UpdateWindow(*this);
+    
+    // Ana pencereyi bilgilendir (zoom değişti)
+    HWND hParent = ::GetParent(*this);
+    if (hParent)
+        ::PostMessage(hParent, WM_USER + 102, 0, 0); // Zoom değişti mesajı
 }
 
 void CZoomWnd::ZoomOut()
@@ -606,4 +617,9 @@ void CZoomWnd::ZoomOut()
     AdjustRectPlacement();
     ::InvalidateRect(*this, nullptr, TRUE);
     ::UpdateWindow(*this);
+    
+    // Ana pencereyi bilgilendir (zoom değişti)
+    HWND hParent = ::GetParent(*this);
+    if (hParent)
+        ::PostMessage(hParent, WM_USER + 102, 0, 0); // Zoom değişti mesajı
 }
