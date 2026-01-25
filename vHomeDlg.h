@@ -1,0 +1,66 @@
+#pragma once
+#include "stdafx.h"
+#include "dataIsMe.h" 
+#include "resource.h" 
+#include <map>
+#include <vector>
+
+#include <commctrl.h>
+#include "HomeFeaturesPage.h"
+
+class CHomeDialog : public CDialog
+{
+public:
+    // Yapýcý
+    CHomeDialog(DatabaseManager& dbManagerRef, DialogMode mode, const CString& cariKod, const CString& homeCodeToEdit = _T(""));
+    virtual ~CHomeDialog() override = default;
+
+    // Temel Fonksiyonlar
+    void SetCariKod(const CString& code) { m_cariKod = code; }
+    void SetPropertyCode(const CString& code) { m_homeCodeToEdit = code; }
+
+    // Panodan Veri Çekme (Text Parse)
+    void OnLoadFromClipboard();
+    bool ValidateData(std::map<CString, CString>& dataMap);
+    // Yardýmcýlar
+    CString GetClipboardText();
+    std::map<CString, CString> ParseSahibindenText(const CString& rawText);
+    std::map<CString, CString> NormalizeToSchemaMap(const std::map<CString, CString>& rawFields);
+    void SanitizeDataMap(std::map<CString, CString>& dataMap);
+    // Scroll yardýmcýlarý
+    void UpdateScrollInfo();
+    int m_nVscrollPos = 0;
+    int m_nHscrollPos = 0;
+    int m_nVscrollMax = 0;
+    int m_nHscrollMax = 0;
+protected:
+    virtual BOOL OnInitDialog() override;
+    virtual void OnOK() override;
+    virtual INT_PTR DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
+
+    void OnSetCtrl();     // ComboBox'larý doldurur
+    void FillCombo(int id, const std::vector<CString>& items);
+
+private:
+    DatabaseManager& m_dbManager;
+    DialogMode m_dialogMode;
+    CString m_cariKod;
+    CString m_homeCodeToEdit;
+private:
+    HFONT m_hUiFont = nullptr;
+
+    void ApplyFontRecursive(HWND hWnd, HFONT hFont);
+    void FixTabFonts();
+    // Seviye-2: Tab tabanlý özellikler
+    HWND m_hTab = nullptr;
+    CHomeFeaturesPage m_featuresPage1;
+    CHomeFeaturesPage m_featuresPage2;
+    std::vector<HWND> m_generalControls; // Tab1'de gösterilecek olanlar
+    bool m_layoutShifted = false;
+
+    void InitTabs();
+    void CollectGeneralControls();
+    void ShiftGeneralControlsForTabHeader();
+    void LayoutTabAndPages();
+    void SwitchTab(int index);
+};

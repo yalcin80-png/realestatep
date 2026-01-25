@@ -1,0 +1,141 @@
+ï»¿
+
+
+#include "stdafx.h"
+#include "vFieldDlg.h"
+#include <fstream>
+#include <shellapi.h>
+
+//=========================================================
+//  OnInitDialog
+//  AmaÃ§: Form aÃ§Ä±ldÄ±ÄŸÄ±nda kontrolleri hazÄ±rlar ve veriyi yÃ¼kler.
+//=========================================================
+BOOL CFieldDialog::OnInitDialog()
+{
+    CDialog::OnInitDialog();
+
+    // ComboBox ve kontrolleri hazÄ±rla
+    OnSetCtrl();
+
+    // Kod alanlarÄ±nÄ± salt okunur yap (Otomatik Ã¼retim veya PK gÃ¼venliÄŸi iÃ§in)
+    ::SendMessage(GetDlgItem(IDC_FLD_CODE), EM_SETREADONLY, TRUE, 0);
+    ::SendMessage(GetDlgItem(IDC_FLD_CARI_KOD), EM_SETREADONLY, TRUE, 0);
+
+    if (m_mode == INEWUSER)
+    {
+        SetWindowText(_T("Yeni Tarla KaydÄ± Ekle"));
+
+        // VarsayÄ±lan deÄŸerler ve yeni kod Ã¼retimi
+        SetDlgItemText(IDC_FLD_CODE, m_db.GenerateNextFieldCode());
+        if (!m_cariKod.IsEmpty()) SetDlgItemText(IDC_FLD_CARI_KOD, m_cariKod);
+
+        // Tarih ve Durum varsayÄ±lanlarÄ±
+        ::SendMessage(GetDlgItem(IDC_FLD_DURUM), CB_SELECTSTRING, -1, (LPARAM)_T("Aktif"));
+    }
+    else // IUPDATEUSER
+    {
+        SetWindowText(_T("Tarla KaydÄ±nÄ± DÃ¼zenle"));
+
+        if (!m_fieldCodeToEdit.IsEmpty())
+        {
+            // MERKEZÄ° SÄ°STEM: KaydÄ± Map olarak Ã§ek
+            auto dataMap = m_db.FetchRecordMap(TABLE_NAME_FIELD, _T("Field_Code"), m_fieldCodeToEdit);
+
+            if (!dataMap.empty())
+            {
+                // OTOMASYON: Map verisini UI kontrollerine bas (SchemaManager kullanÄ±r)
+                m_db.Bind_Data_To_UI(this, TABLE_NAME_FIELD, dataMap);
+
+                if (dataMap.count(_T("Cari_Kod"))) m_cariKod = dataMap[_T("Cari_Kod")];
+            }
+            else
+            {
+                MessageBox(_T("KayÄ±t veritabanÄ±nda bulunamadÄ±!"), _T("Hata"), MB_ICONERROR);
+                EndDialog(IDCANCEL);
+            }
+        }
+    }
+
+    return TRUE;
+}
+//=========================================================
+//  OnOK (Kaydet)
+//=========================================================
+void CFieldDialog::OnOK()
+{
+    std::map<CString, CString> uiData;
+
+    // OTOMASYON: Ekrandaki tÃ¼m verileri Map'e topla
+    m_db.Bind_UI_To_Data(this, TABLE_NAME_FIELD, uiData);
+
+    // Veri gÃ¼venliÄŸi ve sayÄ±sal alan kontrolÃ¼
+    SanitizeDataMap(uiData);
+
+    // Zorunlu alanlarÄ±n korunmasÄ±
+    if (m_mode == IUPDATEUSER) uiData[_T("Field_Code")] = m_fieldCodeToEdit;
+    if (uiData[_T("Cari_Kod")].IsEmpty()) uiData[_T("Cari_Kod")] = m_cariKod;
+
+    uiData[_T("Updated_At")] = m_db.GetCurrentIsoUtc();
+
+    // Struct DÃ¶nÃ¼ÅŸÃ¼mÃ¼: Map'ten Field_cstr oluÅŸtur
+    Field_cstr fieldData;
+    for (const auto& [key, val] : uiData) {
+        DatabaseManager::SetFieldByStringName(fieldData, key, val);
+    }
+
+    // VeritabanÄ± Ä°ÅŸlemi
+    bool success = (m_mode == INEWUSER) ? m_db.InsertGlobal(fieldData) : m_db.UpdateGlobal(fieldData);
+
+    if (success)
+    {
+        MessageBox(_T("Tarla kaydÄ± baÅŸarÄ±yla kaydedildi."), _T("Bilgi"), MB_ICONINFORMATION);
+        CDialog::OnOK();
+    }
+}
+
+void CFieldDialog::SanitizeDataMap(std::map<CString, CString>& dataMap)
+{
+    // SayÄ±sal alanlarÄ±n boÅŸ kalmamasÄ±nÄ± saÄŸla (VeritabanÄ± tipiyle uyum iÃ§in)
+    auto CleanNum = [&](const CString& key) {
+        if (dataMap.find(key) == dataMap.end()) return;
+        CString v = dataMap[key];
+        CString n;
+        for (int i = 0; i < v.GetLength(); i++) if (_istdigit(v[i])) n += v[i];
+        dataMap[key] = n.IsEmpty() ? CString(_T("0")) : n;        };
+
+    CleanNum(_T("Fiyat"));
+    CleanNum(_T("Metrekare"));
+    CleanNum(_T("PricePerM2"));
+}
+void CFieldDialog::OnSetCtrl()
+{
+    // dataIsMe.cpp iÃ§indeki GetProperties<Field_cstr> listesiyle uyumlu listeler
+    std::vector<CString> varyok = { _T("Var"), _T("Yok") };
+    std::vector<CString> types = { _T("Tarla"), _T("Zeytinlik"), _T("Meyve BahÃ§esi"), _T("BaÄŸ") };
+    std::vector<CString> tapu = { _T("MÃ¼stakil Parsel"), _T("Hisseli"), _T("Zilliyet") };
+    std::vector<CString> status = { _T("Aktif"), _T("SatÄ±ldÄ±"), _T("Pasif") };
+
+    FillCombo(IDC_FLD_SULAMA, varyok);
+    FillCombo(IDC_FLD_ACCESS, varyok);
+    FillCombo(IDC_FLD_DEED_STATUS, tapu);
+    FillCombo(IDC_FLD_DURUM, status);
+}
+void CFieldDialog::FillCombo(int id, const std::vector<CString>& items)
+{
+    HWND hCtrl = GetDlgItem(id);
+    if (!hCtrl) return;
+    ::SendMessage(hCtrl, CB_RESETCONTENT, 0, 0);
+    for (const auto& s : items) ::SendMessage(hCtrl, CB_ADDSTRING, 0, (LPARAM)(LPCTSTR)s);
+}
+//=========================================================
+//  UpdateUIFromMap (SchemaManager Entegrasyonu)
+//  AmaÃ§: Veri haritasÄ±nÄ± Schema'ya bakarak ID'lere daÄŸÄ±tÄ±r.
+//=========================================================
+void CFieldDialog::UpdateUIFromMap(const std::map<CString, CString>& dataMap)
+{
+    // SchemaManager'dan bu tabloya ait alan tanÄ±mlarÄ±nÄ± al
+    // (VarsayÄ±m: Tablo adÄ± "Fields" veya benzeri bir key ile kayÄ±tlÄ±)
+    // EÄŸer SchemaManager tablo bazlÄ± deÄŸilse manuel ID map'i kullanabiliriz ama
+    // SchemaManager::GetSchema mantÄ±ÄŸÄ±nÄ± kullanmaya Ã§alÄ±ÅŸalÄ±m.
+
+    // Å
