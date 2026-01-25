@@ -1,0 +1,44 @@
+#pragma once
+#include "wxx_wincore.h"
+#include "resource.h"
+#include "SimpleBrowser.h" // Modüler Browser Sýnýfýmýz
+
+class CSahibindenImportDlg : public CDialog
+{
+public:
+    CSahibindenImportDlg(HWND hParent = NULL);
+    virtual ~CSahibindenImportDlg() {}
+
+protected:
+    // Dialog Baþlatýldýðýnda
+    virtual BOOL OnInitDialog();
+    void ProcessJsonContent(const std::wstring& jsonText);
+
+    // Buton Týklamalarý
+    virtual BOOL OnCommand(WPARAM wParam, LPARAM lParam);
+
+    // Pencere Kapatma
+    virtual void OnCancel();
+
+    // Pencere Boyutlandýrma ve Timer mesajlarý için
+    virtual INT_PTR DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
+
+private:
+    // --- Aksiyonlar ---
+    void OnButtonNavigate(); // Linke Git
+    void OnButtonImport();   // Veriyi Çek ve Kaydet
+
+    // --- Yardýmcýlar ---
+    void ProcessHtmlContent(const std::wstring& html);
+    void LogLine(const CString& text);
+    void ResizeBrowser(); // Browser'ý pencere boyutuna uydur
+
+    // --- Kontroller ---
+    CEdit           m_editUrl;      // URL Kutusu
+    CButton         m_btnGo;        // Git Butonu
+    CButton         m_btnImport;    // Ýçe Aktar Butonu
+    CListBox        m_listLog;      // Log Ekraný
+
+    // --- Modüler Browser Bileþeni ---
+    CSimpleBrowser  m_browser;
+};

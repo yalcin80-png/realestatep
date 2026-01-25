@@ -1,0 +1,410 @@
+// ******************************************************************************
+// * This is an automatically generated file containing the ribbon resource for *
+// * your application.                                                          *
+// ******************************************************************************
+
+#include ".\RibbonUI.h"
+
+STRINGTABLE 
+BEGIN
+    cmdTabTreeList_LabelTitle_RESID L"TreeListView" /* LabelTitle cmdTabTreeList_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    cmdTabListView_LabelTitle_RESID L"ListView" /* LabelTitle cmdTabListView_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    cmdGrpTreeOps_LabelTitle_RESID L"\x0130\x015flemler" /* LabelTitle cmdGrpTreeOps_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    cmdGrpTreeMark_LabelTitle_RESID L"\x0130\x015faretle" /* LabelTitle cmdGrpTreeMark_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    cmdGrpTreeStatus_LabelTitle_RESID L"Durum" /* LabelTitle cmdGrpTreeStatus_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    cmdGrpTreeDocs_LabelTitle_RESID L"Formlar / \x00d6nizleme" /* LabelTitle cmdGrpTreeDocs_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    cmdGrpTreeLayout_LabelTitle_RESID L"G\x00f6r\x00fcn\x00fcm / Kolon" /* LabelTitle cmdGrpTreeLayout_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    cmdGrpListRecord_LabelTitle_RESID L"Kay\x0131t" /* LabelTitle cmdGrpListRecord_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    cmdGrpListAdd_LabelTitle_RESID L"Ekle" /* LabelTitle cmdGrpListAdd_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    cmdGrpListSet_LabelTitle_RESID L"Durum / \x0130\x015faret" /* LabelTitle cmdGrpListSet_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    cmdGrpListFilter_LabelTitle_RESID L"Filtreleme" /* LabelTitle cmdGrpListFilter_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    cmdGrpListView_LabelTitle_RESID L"G\x00f6r\x00fcn\x00fcm" /* LabelTitle cmdGrpListView_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    cmdGrpListTools_LabelTitle_RESID L"Ara\x00e7lar" /* LabelTitle cmdGrpListTools_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDC_CMD_ABOUT_LabelTitle_RESID L"Hakk\x0131nda" /* LabelTitle IDC_CMD_ABOUT_LabelTitle_RESID: (null) */
+END
+
+IDC_CMD_ABOUT_LargeImages_RESID    BITMAP    "res\\InfoL.bmp" /* LargeImages IDC_CMD_ABOUT_LargeImages_RESID: (null) */
+STRINGTABLE 
+BEGIN
+    IDM_TREELIST_EDIT_LabelTitle_RESID L"D\x00fczenle" /* LabelTitle IDM_TREELIST_EDIT_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_TREELIST_VIEW_LabelTitle_RESID L"G\x00f6r\x00fcnt\x00fcle" /* LabelTitle IDM_TREELIST_VIEW_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_TREELIST_DELETE_LabelTitle_RESID L"Sil" /* LabelTitle IDM_TREELIST_DELETE_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_TREELIST_SATILDI_LabelTitle_RESID L"Sat\x0131ld\x0131" /* LabelTitle IDM_TREELIST_SATILDI_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_TREELIST_SATIS_DEVAM_LabelTitle_RESID L"Sat\x0131\x015f Devam" /* LabelTitle IDM_TREELIST_SATIS_DEVAM_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_TREELIST_WAIT_LabelTitle_RESID L"Beklemede" /* LabelTitle IDM_TREELIST_WAIT_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_TREELIST_UNCERTAIN_LabelTitle_RESID L"Belirsiz" /* LabelTitle IDM_TREELIST_UNCERTAIN_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_STATUS_ACTIVE_LabelTitle_RESID L"Aktif" /* LabelTitle IDM_STATUS_ACTIVE_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_STATUS_SOLD_LabelTitle_RESID L"Sat\x0131ld\x0131" /* LabelTitle IDM_STATUS_SOLD_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_STATUS_PRICE_DOWN_LabelTitle_RESID L"Fiyat D\x00fc\x015ft\x00fc" /* LabelTitle IDM_STATUS_PRICE_DOWN_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_STATUS_URGENT_LabelTitle_RESID L"Acil" /* LabelTitle IDM_STATUS_URGENT_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_STATUS_PASSIVE_LabelTitle_RESID L"Pasif / \x0130ptal" /* LabelTitle IDM_STATUS_PASSIVE_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_FONT_CHANGE_LabelTitle_RESID L"Font" /* LabelTitle IDM_FONT_CHANGE_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_ONOFFER_MENU_LabelTitle_RESID L"Teklif Ver" /* LabelTitle IDM_ONOFFER_MENU_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_VIEW_OFFERS_LabelTitle_RESID L"Gelen Teklifler" /* LabelTitle IDM_VIEW_OFFERS_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_SATILIK_YETKI_LabelTitle_RESID L"Sat\x0131l\x0131k Tek Yetki" /* LabelTitle IDM_SATILIK_YETKI_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_TREELIST_PREVIEW_LabelTitle_RESID L"M\x00fclk Bilgileri" /* LabelTitle IDM_TREELIST_PREVIEW_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_KIRALIK_TEK_YETKI_LabelTitle_RESID L"Kiral\x0131k Tek Yetki" /* LabelTitle IDM_KIRALIK_TEK_YETKI_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_CAYMA_AKCESI_LabelTitle_RESID L"Cayma Ak\x00e7esi" /* LabelTitle IDM_CAYMA_AKCESI_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_KIRA_KONTRATOSU_LabelTitle_RESID L"Kira Kontratosu" /* LabelTitle IDM_KIRA_KONTRATOSU_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_TEKLIF_FORMU_LabelTitle_RESID L"Teklif Formu" /* LabelTitle IDM_TEKLIF_FORMU_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_YER_GOSTER_LabelTitle_RESID L"Yer G\x00f6sterme" /* LabelTitle IDM_YER_GOSTER_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_ONALIM_FERAGAT_LabelTitle_RESID L"Onal\x0131m Feragat" /* LabelTitle IDM_ONALIM_FERAGAT_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_SAVECOLUMNWITH_LabelTitle_RESID L"Geni\x015flikleri Kaydet" /* LabelTitle IDM_SAVECOLUMNWITH_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    ID_CONTEXT_EDIT_COLUMNS_LabelTitle_RESID L"Ba\x015fl\x0131klar" /* LabelTitle ID_CONTEXT_EDIT_COLUMNS_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_NEW_RECORD_LabelTitle_RESID L"Yeni M\x00fc\x015fteri" /* LabelTitle IDM_NEW_RECORD_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_RECORD_UPDATE_LabelTitle_RESID L"Kay\x0131t G\x00fcncelle" /* LabelTitle IDM_RECORD_UPDATE_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    ID_MAINLISTVIEWMENU_KAYD32781_LabelTitle_RESID L"Kay\x0131t G\x00f6r\x00fcnt\x00fcle" /* LabelTitle ID_MAINLISTVIEWMENU_KAYD32781_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_DELETE_IS_SELECTED_LabelTitle_RESID L"Sil" /* LabelTitle IDM_DELETE_IS_SELECTED_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_ADD_HOME_LabelTitle_RESID L"Ev" /* LabelTitle IDM_ADD_HOME_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    ID_EKLE_ARSA_LabelTitle_RESID L"Arsa" /* LabelTitle ID_EKLE_ARSA_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    ID_EKLE_BAGVBAHCE_LabelTitle_RESID L"Ba\x011f Bah\x00e7e" /* LabelTitle ID_EKLE_BAGVBAHCE_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    ID_EKLE_TICARIALAN_LabelTitle_RESID L"Ticari" /* LabelTitle ID_EKLE_TICARIALAN_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    ID_EKLE_TARLA_LabelTitle_RESID L"Tarla" /* LabelTitle ID_EKLE_TARLA_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    ID_EKLE_VILLA_LabelTitle_RESID L"Villa" /* LabelTitle ID_EKLE_VILLA_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    ID_EKLE_MUSTAKILHOME_LabelTitle_RESID L"M\x00fcstakil Ev" /* LabelTitle ID_EKLE_MUSTAKILHOME_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_SET_CALISIR_LabelTitle_RESID L"\x00c7al\x0131\x015f\x0131r" /* LabelTitle IDM_SET_CALISIR_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_SET_CALISMAZ_LabelTitle_RESID L"\x00c7al\x0131\x015fmaz" /* LabelTitle IDM_SET_CALISMAZ_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_SET_DUSUNECEK_LabelTitle_RESID L"D\x00fc\x015f\x00fcnecek" /* LabelTitle IDM_SET_DUSUNECEK_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    ID_MAINLISTVIEWMENU_32793_LabelTitle_RESID L"\x015e\x00fcpheli" /* LabelTitle ID_MAINLISTVIEWMENU_32793_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    cmdFilterMenuBtn_LabelTitle_RESID L"Kategori Se\x00e7" /* LabelTitle cmdFilterMenuBtn_LabelTitle_RESID: (null) */
+END
+
+cmdFilterMenuBtn_LargeImages_RESID    BITMAP    "res\\InfoL.bmp" /* LargeImages cmdFilterMenuBtn_LargeImages_RESID: (null) */
+STRINGTABLE 
+BEGIN
+    IDM_FLT_HEPSI_LabelTitle_RESID L"T\x00fcm\x00fc (Hepsi)" /* LabelTitle IDM_FLT_HEPSI_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_FLT_SICAK_ALICI_LabelTitle_RESID L"\xd83d\xdd25 Motive Al\x0131c\x0131" /* LabelTitle IDM_FLT_SICAK_ALICI_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_FLT_SICAK_SATICI_LabelTitle_RESID L"\xd83d\xdd25 Motive Sat\x0131c\x0131" /* LabelTitle IDM_FLT_SICAK_SATICI_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_FLT_POT_ALICI_LabelTitle_RESID L"\xd83d\xdfe1 Potansiyel Al\x0131c\x0131" /* LabelTitle IDM_FLT_POT_ALICI_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_FLT_POT_SATICI_LabelTitle_RESID L"\xd83d\xdfe1 Potansiyel Sat\x0131c\x0131" /* LabelTitle IDM_FLT_POT_SATICI_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_FLT_YATIRIMCI_LabelTitle_RESID L"\xd83d\xdcbc Yat\x0131r\x0131mc\x0131" /* LabelTitle IDM_FLT_YATIRIMCI_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_FLT_KIRACI_LabelTitle_RESID L"\xd83c\xdfe0 Kirac\x0131 Aday\x0131" /* LabelTitle IDM_FLT_KIRACI_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_FLT_EV_SAHIBI_LabelTitle_RESID L"\xd83d\xdd11 Ev Sahibi" /* LabelTitle IDM_FLT_EV_SAHIBI_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_FLT_YENI_LabelTitle_RESID L"\x2728 Yeni M\x00fc\x015fteri" /* LabelTitle IDM_FLT_YENI_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_FLT_TAKIP_LabelTitle_RESID L"\xd83d\xdcc5 Takipte" /* LabelTitle IDM_FLT_TAKIP_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_FLT_RANDEVU_LabelTitle_RESID L"\xd83e\xdd1d Randevu Al\x0131nd\x0131" /* LabelTitle IDM_FLT_RANDEVU_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_FLT_TEKLIF_LabelTitle_RESID L"\xd83d\xdcc4 Teklif Verdi" /* LabelTitle IDM_FLT_TEKLIF_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_FLT_TAMAMLANDI_LabelTitle_RESID L"\x2705 \x0130\x015flem Tamam" /* LabelTitle IDM_FLT_TAMAMLANDI_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_VIEW_CARD_LabelTitle_RESID L"Kart" /* LabelTitle IDM_VIEW_CARD_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_VIEW_REPORT_LabelTitle_RESID L"Rapor" /* LabelTitle IDM_VIEW_REPORT_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDC_CMD_VIEW_DETAILS_LabelTitle_RESID L"Detay" /* LabelTitle IDC_CMD_VIEW_DETAILS_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDC_CMD_VIEW_LIST_LabelTitle_RESID L"Liste" /* LabelTitle IDC_CMD_VIEW_LIST_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDC_CMD_VIEW_SMALL_LabelTitle_RESID L"K\x00fc\x00e7\x00fck" /* LabelTitle IDC_CMD_VIEW_SMALL_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_SAVE_TO_DATABASE_LabelTitle_RESID L"Veritaban\x0131 Kaydet" /* LabelTitle IDM_SAVE_TO_DATABASE_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_GOTOADRESS_LabelTitle_RESID L"Web Adresine Git" /* LabelTitle IDM_GOTOADRESS_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_FILE_UPLOAD_CLOUD_LabelTitle_RESID L"Buluta G\x00f6nder" /* LabelTitle IDM_FILE_UPLOAD_CLOUD_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_GOOGLE_EXIT_LabelTitle_RESID L"Google \x00c7\x0131k\x0131\x015f" /* LabelTitle IDM_GOOGLE_EXIT_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_RANDEVU_OLUSTUR_LabelTitle_RESID L"Randevu Olu\x015ftur" /* LabelTitle IDM_RANDEVU_OLUSTUR_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_RANDEVU_GORUNTULE_LabelTitle_RESID L"Randevu G\x00f6r\x00fcnt\x00fcle" /* LabelTitle IDM_RANDEVU_GORUNTULE_LabelTitle_RESID: (null) */
+END
+
+STRINGTABLE 
+BEGIN
+    IDM_OZELLIKLER_LabelTitle_RESID L"\x00d6zellikler" /* LabelTitle IDM_OZELLIKLER_LabelTitle_RESID: (null) */
+END
+
+APPLICATION_RIBBON    UIFILE    "..\\src\\Ribbon.bml"

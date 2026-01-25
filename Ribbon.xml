@@ -1,0 +1,554 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Application xmlns="http://schemas.microsoft.com/windows/2009/Ribbon">
+
+  <Application.Commands>
+
+    <Command Name="cmdTabTreeList" Id="20000">
+      <Command.LabelTitle>
+        <String Id="20001">TreeListView</String>
+      </Command.LabelTitle>
+    </Command>
+
+    <Command Name="cmdTabListView" Id="20100">
+      <Command.LabelTitle>
+        <String Id="20101">ListView</String>
+      </Command.LabelTitle>
+    </Command>
+
+    <Command Name="cmdGrpTreeOps" Id="21000">
+      <Command.LabelTitle>
+        <String Id="21001">İşlemler</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdGrpTreeMark" Id="21010">
+      <Command.LabelTitle>
+        <String Id="21011">İşaretle</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdGrpTreeStatus" Id="21020">
+      <Command.LabelTitle>
+        <String Id="21021">Durum</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdGrpTreeDocs" Id="21030">
+      <Command.LabelTitle>
+        <String Id="21031">Formlar / Önizleme</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdGrpTreeLayout" Id="21040">
+      <Command.LabelTitle>
+        <String Id="21041">Görünüm / Kolon</String>
+      </Command.LabelTitle>
+    </Command>
+
+    <Command Name="cmdGrpListRecord" Id="22000">
+      <Command.LabelTitle>
+        <String Id="22001">Kayıt</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdGrpListAdd" Id="22010">
+      <Command.LabelTitle>
+        <String Id="22011">Ekle</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdGrpListSet" Id="22020">
+      <Command.LabelTitle>
+        <String Id="22021">Durum / İşaret</String>
+      </Command.LabelTitle>
+    </Command>
+
+    <Command Name="cmdGrpListFilter" Id="25250">
+      <Command.LabelTitle>
+        <String Id="25251">Filtreleme</String>
+      </Command.LabelTitle>
+    </Command>
+
+    <Command Name="cmdGrpListView" Id="22030">
+      <Command.LabelTitle>
+        <String Id="22031">Görünüm</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdGrpListTools" Id="22040">
+      <Command.LabelTitle>
+        <String Id="22041">Araçlar</String>
+      </Command.LabelTitle>
+    </Command>
+
+    <Command Name="cmdAppMenu" Id="23000" />
+    <Command Name="cmdAbout" Symbol="IDC_CMD_ABOUT" Id="12080">
+      <Command.LabelTitle>
+        <String Id="12081">Hakkında</String>
+      </Command.LabelTitle>
+      <Command.LargeImages>
+        <Image Id="12082">res/InfoL.bmp</Image>
+      </Command.LargeImages>
+    </Command>
+
+    <Command Name="cmdTreeEdit"   Symbol="IDM_TREELIST_EDIT"   Id="24000">
+      <Command.LabelTitle>
+        <String Id="24001">Düzenle</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeView"   Symbol="IDM_TREELIST_VIEW"   Id="24010">
+      <Command.LabelTitle>
+        <String Id="24011">Görüntüle</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeDelete" Symbol="IDM_TREELIST_DELETE" Id="24020">
+      <Command.LabelTitle>
+        <String Id="24021">Sil</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeSold"      Symbol="IDM_TREELIST_SATILDI"     Id="24100">
+      <Command.LabelTitle>
+        <String Id="24101">Satıldı</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeSaleCont"  Symbol="IDM_TREELIST_SATIS_DEVAM" Id="24110">
+      <Command.LabelTitle>
+        <String Id="24111">Satış Devam</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeWait"      Symbol="IDM_TREELIST_WAIT"       Id="24120">
+      <Command.LabelTitle>
+        <String Id="24121">Beklemede</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeUncertain" Symbol="IDM_TREELIST_UNCERTAIN"  Id="24130">
+      <Command.LabelTitle>
+        <String Id="24131">Belirsiz</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeStatusActive"    Symbol="IDM_STATUS_ACTIVE"     Id="24200">
+      <Command.LabelTitle>
+        <String Id="24201">Aktif</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeStatusSold"      Symbol="IDM_STATUS_SOLD"       Id="24210">
+      <Command.LabelTitle>
+        <String Id="24211">Satıldı</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeStatusPriceDown" Symbol="IDM_STATUS_PRICE_DOWN" Id="24220">
+      <Command.LabelTitle>
+        <String Id="24221">Fiyat Düştü</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeStatusUrgent"    Symbol="IDM_STATUS_URGENT"     Id="24230">
+      <Command.LabelTitle>
+        <String Id="24231">Acil</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeStatusPassive"   Symbol="IDM_STATUS_PASSIVE"    Id="24240">
+      <Command.LabelTitle>
+        <String Id="24241">Pasif / İptal</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeFont"         Symbol="IDM_FONT_CHANGE"      Id="24300">
+      <Command.LabelTitle>
+        <String Id="24301">Font</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeOffer"        Symbol="IDM_ONOFFER_MENU"     Id="24310">
+      <Command.LabelTitle>
+        <String Id="24311">Teklif Ver</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeViewOffers"   Symbol="IDM_VIEW_OFFERS"      Id="24320">
+      <Command.LabelTitle>
+        <String Id="24321">Gelen Teklifler</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeYetkiSatilik" Symbol="IDM_SATILIK_YETKI"     Id="24330">
+      <Command.LabelTitle>
+        <String Id="24331">Satılık Tek Yetki</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreePreview"      Symbol="IDM_TREELIST_PREVIEW"  Id="24340">
+      <Command.LabelTitle>
+        <String Id="24341">Mülk Bilgileri</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeYetkiKiralik" Symbol="IDM_KIRALIK_TEK_YETKI"  Id="24350">
+      <Command.LabelTitle>
+        <String Id="24351">Kiralık Tek Yetki</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeCayma"        Symbol="IDM_CAYMA_AKCESI"      Id="24360">
+      <Command.LabelTitle>
+        <String Id="24361">Cayma Akçesi</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeKiraKontrat"  Symbol="IDM_KIRA_KONTRATOSU"   Id="24370">
+      <Command.LabelTitle>
+        <String Id="24371">Kira Kontratosu</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeTeklifForm"   Symbol="IDM_TEKLIF_FORMU"      Id="24380">
+      <Command.LabelTitle>
+        <String Id="24381">Teklif Formu</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeYerGoster"    Symbol="IDM_YER_GOSTER"        Id="24390">
+      <Command.LabelTitle>
+        <String Id="24391">Yer Gösterme</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeOnalim"       Symbol="IDM_ONALIM_FERAGAT"    Id="24400">
+      <Command.LabelTitle>
+        <String Id="24401">Onalım Feragat</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeSaveColWidth" Symbol="IDM_SAVECOLUMNWITH"       Id="24410">
+      <Command.LabelTitle>
+        <String Id="24411">Genişlikleri Kaydet</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdTreeEditColumns"  Symbol="ID_CONTEXT_EDIT_COLUMNS"  Id="24420">
+      <Command.LabelTitle>
+        <String Id="24421">Başlıklar</String>
+      </Command.LabelTitle>
+    </Command>
+
+    <Command Name="cmdListNewCustomer" Symbol="IDM_NEW_RECORD"           Id="25000">
+      <Command.LabelTitle>
+        <String Id="25001">Yeni Müşteri</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListUpdate"      Symbol="IDM_RECORD_UPDATE"       Id="25010">
+      <Command.LabelTitle>
+        <String Id="25011">Kayıt Güncelle</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListViewRecord"  Symbol="ID_MAINLISTVIEWMENU_KAYD32781" Id="25020">
+      <Command.LabelTitle>
+        <String Id="25021">Kayıt Görüntüle</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListDelete"      Symbol="IDM_DELETE_IS_SELECTED"  Id="25030">
+      <Command.LabelTitle>
+        <String Id="25031">Sil</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListAddHome"     Symbol="IDM_ADD_HOME"         Id="25100">
+      <Command.LabelTitle>
+        <String Id="25101">Ev</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListAddArsa"     Symbol="ID_EKLE_ARSA"         Id="25110">
+      <Command.LabelTitle>
+        <String Id="25111">Arsa</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListAddBagBahce" Symbol="ID_EKLE_BAGVBAHCE"    Id="25120">
+      <Command.LabelTitle>
+        <String Id="25121">Bağ Bahçe</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListAddTicari"   Symbol="ID_EKLE_TICARIALAN"   Id="25130">
+      <Command.LabelTitle>
+        <String Id="25131">Ticari</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListAddTarla"    Symbol="ID_EKLE_TARLA"        Id="25140">
+      <Command.LabelTitle>
+        <String Id="25141">Tarla</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListAddVilla"    Symbol="ID_EKLE_VILLA"        Id="25150">
+      <Command.LabelTitle>
+        <String Id="25151">Villa</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListAddMustakil" Symbol="ID_EKLE_MUSTAKILHOME" Id="25160">
+      <Command.LabelTitle>
+        <String Id="25161">Müstakil Ev</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListSetCalisir"   Symbol="IDM_SET_CALISIR"  Id="25200">
+      <Command.LabelTitle>
+        <String Id="25201">Çalışır</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListSetCalismaz"  Symbol="IDM_SET_CALISMAZ"      Id="25210">
+      <Command.LabelTitle>
+        <String Id="25211">Çalışmaz</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListSetDusunecek" Symbol="IDM_SET_DUSUNECEK"        Id="25220">
+      <Command.LabelTitle>
+        <String Id="25221">Düşünecek</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListSetSupheli"   Symbol="ID_MAINLISTVIEWMENU_32793" Id="25230">
+      <Command.LabelTitle>
+        <String Id="25231">Şüpheli</String>
+      </Command.LabelTitle>
+    </Command>
+
+    <Command Name="cmdFilterMenuBtn" Id="25290">
+      <Command.LabelTitle>
+        <String Id="25291">Kategori Seç</String>
+      </Command.LabelTitle>
+      <Command.LargeImages>
+        <Image Id="25292">res/InfoL.bmp</Image>
+      </Command.LargeImages>
+    </Command>
+
+    <Command Name="cmdFilterAll"        Symbol="IDM_FLT_HEPSI"          Id="3000">
+      <Command.LabelTitle>
+        <String Id="30001">Tümü (Hepsi)</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdFilterHotBuy"     Symbol="IDM_FLT_SICAK_ALICI"    Id="3001">
+      <Command.LabelTitle>
+        <String Id="30011">🔥 Motive Alıcı</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdFilterHotSel"     Symbol="IDM_FLT_SICAK_SATICI"   Id="3002">
+      <Command.LabelTitle>
+        <String Id="30021">🔥 Motive Satıcı</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdFilterPotBuy"     Symbol="IDM_FLT_POT_ALICI"      Id="3003">
+      <Command.LabelTitle>
+        <String Id="30031">🟡 Potansiyel Alıcı</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdFilterPotSel"     Symbol="IDM_FLT_POT_SATICI"     Id="3004">
+      <Command.LabelTitle>
+        <String Id="30041">🟡 Potansiyel Satıcı</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdFilterInvestor"   Symbol="IDM_FLT_YATIRIMCI"      Id="3005">
+      <Command.LabelTitle>
+        <String Id="30051">💼 Yatırımcı</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdFilterTenant"     Symbol="IDM_FLT_KIRACI"         Id="3006">
+      <Command.LabelTitle>
+        <String Id="30061">🏠 Kiracı Adayı</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdFilterLandlord"   Symbol="IDM_FLT_EV_SAHIBI"      Id="3007">
+      <Command.LabelTitle>
+        <String Id="30071">🔑 Ev Sahibi</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdFilterNew"        Symbol="IDM_FLT_YENI"           Id="3008">
+      <Command.LabelTitle>
+        <String Id="30081">✨ Yeni Müşteri</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdFilterFollow"     Symbol="IDM_FLT_TAKIP"          Id="3009">
+      <Command.LabelTitle>
+        <String Id="30091">📅 Takipte</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdFilterAppt"       Symbol="IDM_FLT_RANDEVU"        Id="3010">
+      <Command.LabelTitle>
+        <String Id="30101">🤝 Randevu Alındı</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdFilterOffer"      Symbol="IDM_FLT_TEKLIF"         Id="3011">
+      <Command.LabelTitle>
+        <String Id="30111">📄 Teklif Verdi</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdFilterDone"       Symbol="IDM_FLT_TAMAMLANDI"     Id="3012">
+      <Command.LabelTitle>
+        <String Id="30121">✅ İşlem Tamam</String>
+      </Command.LabelTitle>
+    </Command>
+
+    <Command Name="cmdListViewCard"   Symbol="IDM_VIEW_CARD"        Id="25300">
+      <Command.LabelTitle>
+        <String Id="25301">Kart</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListViewReport" Symbol="IDM_VIEW_REPORT"      Id="25310">
+      <Command.LabelTitle>
+        <String Id="25311">Rapor</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListViewDetails" Symbol="IDC_CMD_VIEW_DETAILS" Id="25320">
+      <Command.LabelTitle>
+        <String Id="25321">Detay</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListViewList"    Symbol="IDC_CMD_VIEW_LIST"    Id="25330">
+      <Command.LabelTitle>
+        <String Id="25331">Liste</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListViewSmall"   Symbol="IDC_CMD_VIEW_SMALL"   Id="25340">
+      <Command.LabelTitle>
+        <String Id="25341">Küçük</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListSaveDb"     Symbol="IDM_SAVE_TO_DATABASE"   Id="25400">
+      <Command.LabelTitle>
+        <String Id="25401">Veritabanı Kaydet</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListGotoAddr"   Symbol="IDM_GOTOADRESS"         Id="25410">
+      <Command.LabelTitle>
+        <String Id="25411">Web Adresine Git</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListUploadCloud" Symbol="IDM_FILE_UPLOAD_CLOUD" Id="25420">
+      <Command.LabelTitle>
+        <String Id="25421">Buluta Gönder</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListGoogleExit" Symbol="IDM_GOOGLE_EXIT"        Id="25430">
+      <Command.LabelTitle>
+        <String Id="25431">Google Çıkış</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListApptCreate" Symbol="IDM_RANDEVU_OLUSTUR"     Id="25440">
+      <Command.LabelTitle>
+        <String Id="25441">Randevu Oluştur</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListApptView"   Symbol="IDM_RANDEVU_GORUNTULE"   Id="25450">
+      <Command.LabelTitle>
+        <String Id="25451">Randevu Görüntüle</String>
+      </Command.LabelTitle>
+    </Command>
+    <Command Name="cmdListProps"      Symbol="IDM_OZELLIKLER"         Id="25460">
+      <Command.LabelTitle>
+        <String Id="25461">Özellikler</String>
+      </Command.LabelTitle>
+    </Command>
+
+  </Application.Commands>
+
+  <Application.Views>
+    <Ribbon>
+
+      <Ribbon.ApplicationMenu>
+        <ApplicationMenu CommandName="cmdAppMenu">
+          <MenuGroup Class="MajorItems">
+            <Button CommandName="cmdAbout"/>
+          </MenuGroup>
+        </ApplicationMenu>
+      </Ribbon.ApplicationMenu>
+
+      <Ribbon.Tabs>
+
+        <Tab CommandName="cmdTabTreeList">
+          <Group CommandName="cmdGrpTreeOps" SizeDefinition="ThreeButtons">
+            <Button CommandName="cmdTreeEdit"/>
+            <Button CommandName="cmdTreeView"/>
+            <Button CommandName="cmdTreeDelete"/>
+          </Group>
+          <Group CommandName="cmdGrpTreeMark" SizeDefinition="FourButtons">
+            <Button CommandName="cmdTreeSold"/>
+            <Button CommandName="cmdTreeSaleCont"/>
+            <Button CommandName="cmdTreeWait"/>
+            <Button CommandName="cmdTreeUncertain"/>
+          </Group>
+          <Group CommandName="cmdGrpTreeStatus" SizeDefinition="FiveButtons">
+            <Button CommandName="cmdTreeStatusActive"/>
+            <Button CommandName="cmdTreeStatusSold"/>
+            <Button CommandName="cmdTreeStatusPriceDown"/>
+            <Button CommandName="cmdTreeStatusUrgent"/>
+            <Button CommandName="cmdTreeStatusPassive"/>
+          </Group>
+          <Group CommandName="cmdGrpTreeDocs">
+            <Button CommandName="cmdTreeFont"/>
+            <Button CommandName="cmdTreeOffer"/>
+            <Button CommandName="cmdTreeViewOffers"/>
+            <Button CommandName="cmdTreePreview"/>
+            <Button CommandName="cmdTreeYetkiSatilik"/>
+            <Button CommandName="cmdTreeYetkiKiralik"/>
+            <Button CommandName="cmdTreeCayma"/>
+            <Button CommandName="cmdTreeKiraKontrat"/>
+            <Button CommandName="cmdTreeTeklifForm"/>
+            <Button CommandName="cmdTreeYerGoster"/>
+            <Button CommandName="cmdTreeOnalim"/>
+          </Group>
+          <Group CommandName="cmdGrpTreeLayout" SizeDefinition="TwoButtons">
+            <Button CommandName="cmdTreeSaveColWidth"/>
+            <Button CommandName="cmdTreeEditColumns"/>
+          </Group>
+        </Tab>
+
+        <Tab CommandName="cmdTabListView">
+
+          <Group CommandName="cmdGrpListRecord" SizeDefinition="FourButtons">
+            <Button CommandName="cmdListNewCustomer"/>
+            <Button CommandName="cmdListUpdate"/>
+            <Button CommandName="cmdListViewRecord"/>
+            <Button CommandName="cmdListDelete"/>
+          </Group>
+
+          <Group CommandName="cmdGrpListAdd">
+            <Button CommandName="cmdListAddHome"/>
+            <Button CommandName="cmdListAddArsa"/>
+            <Button CommandName="cmdListAddBagBahce"/>
+            <Button CommandName="cmdListAddTicari"/>
+            <Button CommandName="cmdListAddTarla"/>
+            <Button CommandName="cmdListAddVilla"/>
+            <Button CommandName="cmdListAddMustakil"/>
+          </Group>
+
+          <Group CommandName="cmdGrpListSet" SizeDefinition="FourButtons">
+            <Button CommandName="cmdListSetCalisir"/>
+            <Button CommandName="cmdListSetCalismaz"/>
+            <Button CommandName="cmdListSetDusunecek"/>
+            <Button CommandName="cmdListSetSupheli"/>
+          </Group>
+
+          <Group CommandName="cmdGrpListFilter" SizeDefinition="OneButton">
+            <DropDownButton CommandName="cmdFilterMenuBtn">
+
+              <MenuGroup Class="MajorItems">
+                <Button CommandName="cmdFilterAll"/>
+                <Button CommandName="cmdFilterNew"/>
+              </MenuGroup>
+
+              <MenuGroup Class="StandardItems">
+                <Button CommandName="cmdFilterHotBuy"/>
+                <Button CommandName="cmdFilterHotSel"/>
+                <Button CommandName="cmdFilterPotBuy"/>
+                <Button CommandName="cmdFilterPotSel"/>
+                <Button CommandName="cmdFilterInvestor"/>
+                <Button CommandName="cmdFilterTenant"/>
+                <Button CommandName="cmdFilterLandlord"/>
+                <Button CommandName="cmdFilterFollow"/>
+                <Button CommandName="cmdFilterAppt"/>
+                <Button CommandName="cmdFilterOffer"/>
+                <Button CommandName="cmdFilterDone"/>
+              </MenuGroup>
+
+            </DropDownButton>
+          </Group>
+
+          <Group CommandName="cmdGrpListView">
+            <Button CommandName="cmdListViewCard"/>
+            <Button CommandName="cmdListViewReport"/>
+            <Button CommandName="cmdListViewDetails"/>
+            <Button CommandName="cmdListViewList"/>
+            <Button CommandName="cmdListViewSmall"/>
+          </Group>
+
+          <Group CommandName="cmdGrpListTools">
+            <Button CommandName="cmdListSaveDb"/>
+            <Button CommandName="cmdListGotoAddr"/>
+            <Button CommandName="cmdListUploadCloud"/>
+            <Button CommandName="cmdListGoogleExit"/>
+            <Button CommandName="cmdListApptCreate"/>
+            <Button CommandName="cmdListApptView"/>
+            <Button CommandName="cmdListProps"/>
+          </Group>
+
+        </Tab>
+
+      </Ribbon.Tabs>
+
+    </Ribbon>
+  </Application.Views>
+
+</Application>
