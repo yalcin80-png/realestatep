@@ -847,12 +847,12 @@ void CHomeDialog::OnIlanBilgileriniAl() {
         
         // Set Title/Description to General Notes if available
         if (!ilanBilgisi->Baslik.empty()) {
-            SetDlgItemText(IDC_EDIT_NOTE_GENERAL, ilanBilgisi->Baslik.c_str());
+            SetDlgItemText(IDC_EDIT_NOTE_GENERAL, CString(ilanBilgisi->Baslik.c_str()));
         }
         
         // Set Price if available
         if (!ilanBilgisi->Fiyat.empty()) {
-            SetDlgItemText(ID_EDIT_FIYAT, ilanBilgisi->Fiyat.c_str());
+            SetDlgItemText(ID_EDIT_FIYAT, CString(ilanBilgisi->Fiyat.c_str()));
         }
         
         // Append Description to internal notes if available
@@ -862,7 +862,7 @@ void CHomeDialog::OnIlanBilgileriniAl() {
             if (!currentNotes.IsEmpty()) {
                 currentNotes += _T("\r\n");
             }
-            currentNotes += ilanBilgisi->Aciklama.c_str();
+            currentNotes += CString(ilanBilgisi->Aciklama.c_str());
             SetDlgItemText(IDC_EDIT_NOTE_INTERNAL, currentNotes);
         }
         

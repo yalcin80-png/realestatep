@@ -2,6 +2,7 @@
 #include <vector>
 #include <functional>
 #include <string>
+#include <optional>
 #include "wxx_wincore.h"
 #include "dataIsMe.h" 
 
