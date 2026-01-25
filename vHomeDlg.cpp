@@ -6,9 +6,13 @@
 #include <vector>
 #include <map>
 #include <sstream>
+#include <unordered_map>
+#include "json.hpp"
 
 #include <commctrl.h>
 #include "HomeFeaturesPage.h"
+
+using json = nlohmann::json;
 
 namespace {
     constexpr int kHomeTabId = 5001;
@@ -50,6 +54,30 @@ namespace {
         std::string utf8(len, '\0');
         WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.size(), &utf8[0], len, nullptr, nullptr);
         return utf8;
+    }
+    
+    // Helper function for JSON parsing
+    std::wstring Utf8ToWide(const std::string& s) {
+        if (s.empty()) return L"";
+        int wlen = MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), NULL, 0);
+        if (wlen <= 0) return L"";
+        std::wstring w(wlen, 0);
+        MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), &w[0], wlen);
+        return w;
+    }
+    
+    std::unordered_map<std::wstring, std::wstring> BuildNameValueMapW(const json& arr) {
+        std::unordered_map<std::wstring, std::wstring> m;
+        if (!arr.is_array()) return m;
+        for (const auto& it : arr) {
+            if (!it.is_object()) continue;
+            if (!it.contains("name") || !it.contains("value")) continue;
+            if (!it["name"].is_string() || !it["value"].is_string()) continue;
+            std::string n = it["name"].get<std::string>();
+            std::string v = it["value"].get<std::string>();
+            m[Utf8ToWide(n)] = Utf8ToWide(v);
+        }
+        return m;
     }
 }
 
@@ -759,23 +787,95 @@ INT_PTR CHomeDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 std::string utf8Json = WStringToUtf8(jsonText);
                 std::string utf8Html = WStringToUtf8(htmlText);
                 
-                // Construct URL
-                CString url;
-                url.Format(_T("https://www.sahibinden.com/ilan/%s"), (LPCTSTR)m_pendingIlanNumarasi);
+                // Parse JSON and HTML to extract property data
+                std::map<CString, CString> dataMap;
+                bool success = false;
                 
-                // Use SahibindenImporter to parse and save
-                SahibindenImporter importer;
-                bool success = importer.ImportFromJsonAndHtmlString(
-                    url,
-                    utf8Json,
-                    utf8Html,
-                    [this](const CString& msg) {
-                        // Log function - could show in status or notes field
-                        SetDlgItemText(IDC_EDIT_NOTE_INTERNAL, msg);
-                    });
+                try {
+                    if (!utf8Json.empty() && utf8Json.size() > 10) {
+                        json j = json::parse(utf8Json);
+                        auto customVars = j.contains("customVars") ? BuildNameValueMapW(j["customVars"]) : std::unordered_map<std::wstring, std::wstring>{};
+                        auto dmpData = j.contains("dmpData") ? BuildNameValueMapW(j["dmpData"]) : std::unordered_map<std::wstring, std::wstring>{};
+                        
+                        // Extract data from JSON - populate dataMap with key property fields
+                        auto PickFirst = [&customVars, &dmpData](std::initializer_list<const wchar_t*> keysA, std::initializer_list<const wchar_t*> keysB) -> CString {
+                            for (auto k : keysA) {
+                                auto it = customVars.find(k);
+                                if (it != customVars.end() && !it->second.empty()) return CString(it->second.c_str());
+                            }
+                            for (auto k : keysB) {
+                                auto it = dmpData.find(k);
+                                if (it != dmpData.end() && !it->second.empty()) return CString(it->second.c_str());
+                            }
+                            return _T("");
+                        };
+                        
+                        dataMap[_T("ListingNo")] = PickFirst({ L"İlan No", L"ilan_no" }, { L"classifiedId", L"id" });
+                        dataMap[_T("ListingDate")] = PickFirst({ L"İlan Tarihi" }, { L"ilan_tarihi" });
+                        dataMap[_T("PropertyType")] = PickFirst({ L"Emlak Tipi" }, { L"cat0" });
+                        
+                        CString price = PickFirst({ L"ilan_fiyat", L"Fiyat" }, {});
+                        if (price.IsEmpty()) {
+                            CString n = PickFirst({}, { L"fiyat" });
+                            if (!n.IsEmpty()) price = n + _T(" TL");
+                        }
+                        dataMap[_T("Price")] = price;
+                        
+                        dataMap[_T("City")] = PickFirst({ L"loc2" }, { L"loc2" });
+                        dataMap[_T("District")] = PickFirst({ L"loc3" }, { L"loc3" });
+                        dataMap[_T("Neighborhood")] = PickFirst({ L"loc5" }, { L"loc5" });
+                        
+                        dataMap[_T("GrossArea")] = PickFirst({ L"m² (Brüt)", L"m2 (Brüt)" }, { L"m2_brut" });
+                        dataMap[_T("NetArea")] = PickFirst({ L"m² (Net)", L"m2 (Net)" }, { L"m2_net" });
+                        dataMap[_T("RoomCount")] = PickFirst({ L"Oda Sayısı" }, { L"oda_sayisi" });
+                        dataMap[_T("BuildingAge")] = PickFirst({ L"Bina Yaşı" }, { L"bina_yasi" });
+                        dataMap[_T("Floor")] = PickFirst({ L"Bulunduğu Kat" }, { L"bulundugu_kat" });
+                        dataMap[_T("TotalFloor")] = PickFirst({ L"Kat Sayısı" }, { L"kat_sayisi" });
+                        dataMap[_T("HeatingType")] = PickFirst({ L"Isıtma" }, { L"isitma" });
+                        dataMap[_T("BathroomCount")] = PickFirst({ L"Banyo Sayısı" }, { L"banyo_sayisi" });
+                        dataMap[_T("KitchenType")] = PickFirst({ L"Mutfak" }, { L"mutfak" });
+                        dataMap[_T("Balcony")] = PickFirst({ L"Balkon" }, { L"balkon" });
+                        dataMap[_T("Elevator")] = PickFirst({ L"Asansör" }, { L"asansor" });
+                        dataMap[_T("Parking")] = PickFirst({ L"Otopark" }, { L"otopark" });
+                        dataMap[_T("Furnished")] = PickFirst({ L"Eşyalı" }, { L"esyali" });
+                        dataMap[_T("UsageStatus")] = PickFirst({ L"Kullanım Durumu" }, { L"kullanim_durumu" });
+                        dataMap[_T("InSite")] = PickFirst({ L"Site İçerisinde" }, { L"site_icerisinde" });
+                        dataMap[_T("SiteName")] = PickFirst({ L"Site Adı" }, { L"site_adi" });
+                        dataMap[_T("Dues")] = PickFirst({ L"Aidat (TL)", L"Aidat" }, { L"aidat_tl" });
+                        dataMap[_T("CreditEligible")] = PickFirst({ L"Krediye Uygun" }, { L"krediye_uygun" });
+                        dataMap[_T("DeedStatus")] = PickFirst({ L"Tapu Durumu" }, { L"tapu_durumu" });
+                        dataMap[_T("SellerType")] = PickFirst({ L"Kimden" }, { L"kimden" });
+                        dataMap[_T("Swap")] = PickFirst({ L"Takas" }, {});
+                        
+                        dataMap[_T("WebsiteName")] = _T("sahibinden.com");
+                        CString url;
+                        url.Format(_T("https://www.sahibinden.com/ilan/%s"), (LPCTSTR)m_pendingIlanNumarasi);
+                        dataMap[_T("ListingURL")] = url;
+                        
+                        success = true;
+                    }
+                } catch (...) {
+                    success = false;
+                }
                 
-                // Update UI based on success
-                OnPropertyDataFetched(url, success);
+                // Populate dialog fields with the fetched data
+                if (success && !dataMap.empty()) {
+                    // Use the database manager's bind method to populate UI
+                    m_dbManager.Bind_Data_To_UI(this, TABLE_NAME_HOME, dataMap);
+                    
+                    // Also populate feature pages if needed
+                    m_featuresPage1.LoadFromMap(dataMap);
+                    m_featuresPage2.LoadFromMap(dataMap);
+                    
+                    // Clear the progress message and show success
+                    SetDlgItemText(IDC_EDIT_NOTE_INTERNAL, _T(""));
+                    MessageBox(_T("İlan bilgileri başarıyla alındı ve dialog'a dolduruldu!\n\nKAYDET butonuna basarak veritabanına kaydedebilirsiniz."), 
+                               _T("Başarılı"), MB_ICONINFORMATION);
+                } else {
+                    SetDlgItemText(IDC_EDIT_NOTE_INTERNAL, _T(""));
+                    MessageBox(_T("İlan bilgileri alınamadı! Lütfen ilan numarasını kontrol edin."), 
+                               _T("Hata"), MB_ICONERROR);
+                }
             });
         });
         
@@ -932,27 +1032,6 @@ void CHomeDialog::FetchPropertyData(const CString& ilanNumarasi) {
     
     // Wait for page to load, then fetch JSON and HTML
     ::SetTimer(*this, kPropertyFetchTimerId, kPropertyFetchDelayMs, nullptr);
-}
-
-void CHomeDialog::OnPropertyDataFetched(const CString& url, bool success) {
-    if (!success) {
-        MessageBox(_T("İlan bilgileri alınamadı! Lütfen ilan numarasını kontrol edin."), _T("Hata"), MB_ICONERROR);
-        SetDlgItemText(IDC_EDIT_NOTE_INTERNAL, _T(""));
-        return;
-    }
-    
-    MessageBox(_T("İlan bilgileri başarıyla alındı ve kaydedildi!"), _T("Bilgi"), MB_ICONINFORMATION);
-    
-    // Refresh the dialog with the saved data
-    if (!m_pendingIlanNumarasi.IsEmpty()) {
-        // Try to load the data from database
-        auto dataMap = m_dbManager.FetchRecordMap(TABLE_NAME_HOME, _T("ListingNo"), m_pendingIlanNumarasi);
-        if (!dataMap.empty()) {
-            m_dbManager.Bind_Data_To_UI(this, TABLE_NAME_HOME, dataMap);
-            m_featuresPage1.LoadFromMap(dataMap);
-            m_featuresPage2.LoadFromMap(dataMap);
-        }
-    }
 }
 
 

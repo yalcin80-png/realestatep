@@ -73,5 +73,4 @@ private:
     
     void InitBrowserIfNeeded();
     void FetchPropertyData(const CString& ilanNumarasi);
-    void OnPropertyDataFetched(const CString& url, bool success);
 };
