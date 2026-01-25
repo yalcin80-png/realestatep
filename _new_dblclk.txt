@@ -1,0 +1,41 @@
+LRESULT CListCustomerView::HandleLButtonDblClk(LPARAM lparam)
+{
+    POINT pt = { GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam) };
+
+    LVHITTESTINFO lvhti{};
+    lvhti.pt = pt;
+    ListView_HitTest(GetHwnd(), &lvhti);
+    const int nItem = lvhti.iItem;
+    if (nItem < 0)
+        return -1;
+
+    if (m_navLevel == NavLevel::Customers)
+    {
+        CString cariKod = GetItemText(nItem, 0);
+        cariKod.Trim();
+        if (!cariKod.IsEmpty())
+        {
+            ShowCustomerCategoryHub(cariKod);
+            return 0;
+        }
+        return -1;
+    }
+    else if (m_navLevel == NavLevel::Categories)
+    {
+        const int categoryId = (int)ListView_GetItemData(GetHwnd(), nItem);
+        if (categoryId > 0 && !m_navCariKod.IsEmpty())
+        {
+            ShowCustomerPropertiesList(m_navCariKod, categoryId);
+            return 0;
+        }
+        return 0;
+    }
+    else
+    {
+        // Properties view double-click: keep classic behavior (edit)
+        CRibbonFrameApp* pApp = GetContainerApp();
+        if (pApp && pApp->GetMainFrame().IsWindow())
+            pApp->GetMainFrame().SendMessage(WM_COMMAND, IDM_TREELIST_VIEW, 0);
+        return 0;
+    }
+}

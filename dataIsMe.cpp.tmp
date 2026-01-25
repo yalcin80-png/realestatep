@@ -1,0 +1,3476 @@
+﻿
+
+#include "stdafx.h"
+#include <io.h>     // _access() fonksiyonu için
+#include "dataIsMe.h"
+
+#include <string>
+
+#include <objbase.h> // CoCreateGuid için
+#include <iomanip>
+#include <sstream>
+#include <chrono>
+
+std::mutex g_propertyCodeMutex;
+
+
+static CString SqlTypeFromFieldType(FieldType ft) {
+    switch (ft) {
+    case FT_INT:    return _T("LONG");          // Tam sayı
+    case FT_DOUBLE: return _T("DOUBLE");        // Ondalıklı sayı
+    case FT_DATE:   return _T("DATETIME");      // Tarih
+    case FT_BOOL:   return _T("YESNO");         // Evet/Hayır
+    case FT_MEMO:   return _T("MEMO");          // Uzun metin
+    default:        return _T("TEXT(255)");     // Varsayılan metin
+    }
+}
+
+
+
+
+// DatabaseManager içine eklenecek (dataIsMe.h/.cpp):
+// Bu fonksiyon property map'i kullanarak string isimden struct alanına değer atar.
+template <typename T>
+static void SetFieldByStringName(T& data, const CString& key, const CString& val) {
+    // KRITIK FIX:
+    // Eski implementasyon, MemberOffset ile ham pointer aritmetigi yaparak CString alanlarini
+    // yanlis ofsete yazabiliyordu. Bu durum heap corruption yaratip, uygulama kapanirken
+    // Customer_cstr/CString destructor icinde (std::wstring::_Tidy_deallocate) crash'e sebep olur.
+    // Bu helper artik guvenli olan PropertyMap::member (pointer-to-member) tabanli
+    // DatabaseManager::SetFieldByStringName fonksiyonunu kullanir.
+    DatabaseManager::SetFieldByStringName(data, key, val);
+}
+
+
+
+
+
+CString Customer_cstr::GetAttr(const std::string& key) const
+{
+    try {
+        if (Attributes.IsEmpty()) return _T("");
+        // DatabaseManager artık tam tanımlı, fonksiyonlarına erişebiliriz
+        auto j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+
+        if (j.contains(key)) {
+            if (j[key].is_string())
+                return DatabaseManager::GetInstance().AnsiToCString(j[key].get<std::string>());
+            return DatabaseManager::GetInstance().AnsiToCString(j[key].dump());
+        }
+    }
+    catch (...) {}
+    return _T("");
+}
+
+void Customer_cstr::SetAttr(const std::string& key, const CString& value)
+{
+    try {
+        nlohmann::json j;
+        if (!Attributes.IsEmpty()) {
+            // Hata önleme: Boş veya bozuk JSON varsa sıfırdan başla
+            try {
+                j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+            }
+            catch (...) { j = nlohmann::json::object(); }
+        }
+
+        j[key] = DatabaseManager::GetInstance().CStringToAnsi(value);
+        Attributes = DatabaseManager::GetInstance().AnsiToCString(j.dump());
+    }
+    catch (...) {}
+}
+
+
+
+
+
+
+CString Home_cstr::GetAttr(const std::string& key) const
+{
+    try {
+        if (Attributes.IsEmpty()) return _T("");
+        // DatabaseManager artık tam tanımlı, fonksiyonlarına erişebiliriz
+        auto j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+
+        if (j.contains(key)) {
+            if (j[key].is_string())
+                return DatabaseManager::GetInstance().AnsiToCString(j[key].get<std::string>());
+            return DatabaseManager::GetInstance().AnsiToCString(j[key].dump());
+        }
+    }
+    catch (...) {}
+    return _T("");
+}
+
+void Home_cstr::SetAttr(const std::string& key, const CString& value)
+{
+    try {
+        nlohmann::json j;
+        if (!Attributes.IsEmpty()) {
+            // Hata önleme: Boş veya bozuk JSON varsa sıfırdan başla
+            try {
+                j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+            }
+            catch (...) { j = nlohmann::json::object(); }
+        }
+
+        j[key] = DatabaseManager::GetInstance().CStringToAnsi(value);
+        Attributes = DatabaseManager::GetInstance().AnsiToCString(j.dump());
+    }
+    catch (...) {}
+}
+
+
+CString Land_cstr::GetAttr(const std::string& key) const
+{
+    try {
+        if (Attributes.IsEmpty()) return _T("");
+        // DatabaseManager artık tam tanımlı, fonksiyonlarına erişebiliriz
+        auto j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+
+        if (j.contains(key)) {
+            if (j[key].is_string())
+                return DatabaseManager::GetInstance().AnsiToCString(j[key].get<std::string>());
+            return DatabaseManager::GetInstance().AnsiToCString(j[key].dump());
+        }
+    }
+    catch (...) {}
+    return _T("");
+}
+
+void Land_cstr::SetAttr(const std::string& key, const CString& value)
+{
+    try {
+        nlohmann::json j;
+        if (!Attributes.IsEmpty()) {
+            // Hata önleme: Boş veya bozuk JSON varsa sıfırdan başla
+            try {
+                j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+            }
+            catch (...) { j = nlohmann::json::object(); }
+        }
+
+        j[key] = DatabaseManager::GetInstance().CStringToAnsi(value);
+        Attributes = DatabaseManager::GetInstance().AnsiToCString(j.dump());
+    }
+    catch (...) {}
+}
+
+bool Land_cstr::GetAttrBool(const std::string& key, bool def) const
+{
+    try {
+        if (Attributes.IsEmpty()) return def;
+        auto j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+        if (!j.contains(key)) return def;
+
+        const auto& v = j[key];
+        if (v.is_boolean()) return v.get<bool>();
+        if (v.is_number_integer()) return v.get<int>() != 0;
+        if (v.is_string()) {
+            std::string s = v.get<std::string>();
+            for (auto& ch : s) ch = (char)tolower(ch);
+            if (s == "1" || s == "true" || s == "yes" || s == "evet") return true;
+            if (s == "0" || s == "false" || s == "no" || s == "hayir" || s == "hayır") return false;
+        }
+    }
+    catch (...) {}
+    return def;
+}
+
+void Land_cstr::SetAttrBool(const std::string& key, bool value)
+{
+    try {
+        nlohmann::json j;
+        if (!Attributes.IsEmpty()) {
+            try { j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes)); }
+            catch (...) { j = nlohmann::json::object(); }
+        }
+        j[key] = value;
+        Attributes = DatabaseManager::GetInstance().AnsiToCString(j.dump());
+    }
+    catch (...) {}
+}
+
+
+
+CString Field_cstr::GetAttr(const std::string& key) const
+{
+    try {
+        if (Attributes.IsEmpty()) return _T("");
+        // DatabaseManager artık tam tanımlı, fonksiyonlarına erişebiliriz
+        auto j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+
+        if (j.contains(key)) {
+            if (j[key].is_string())
+                return DatabaseManager::GetInstance().AnsiToCString(j[key].get<std::string>());
+            return DatabaseManager::GetInstance().AnsiToCString(j[key].dump());
+        }
+    }
+    catch (...) {}
+    return _T("");
+}
+
+void Field_cstr::SetAttr(const std::string& key, const CString& value)
+{
+    try {
+        nlohmann::json j;
+        if (!Attributes.IsEmpty()) {
+            // Hata önleme: Boş veya bozuk JSON varsa sıfırdan başla
+            try {
+                j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+            }
+            catch (...) { j = nlohmann::json::object(); }
+        }
+
+        j[key] = DatabaseManager::GetInstance().CStringToAnsi(value);
+        Attributes = DatabaseManager::GetInstance().AnsiToCString(j.dump());
+    }
+    catch (...) {}
+}
+
+
+CString Villa_cstr::GetAttr(const std::string& key) const
+{
+    try {
+        if (Attributes.IsEmpty()) return _T("");
+        // DatabaseManager artık tam tanımlı, fonksiyonlarına erişebiliriz
+        auto j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+
+        if (j.contains(key)) {
+            if (j[key].is_string())
+                return DatabaseManager::GetInstance().AnsiToCString(j[key].get<std::string>());
+            return DatabaseManager::GetInstance().AnsiToCString(j[key].dump());
+        }
+    }
+    catch (...) {}
+    return _T("");
+}
+
+void Villa_cstr::SetAttr(const std::string& key, const CString& value)
+{
+    try {
+        nlohmann::json j;
+        if (!Attributes.IsEmpty()) {
+            // Hata önleme: Boş veya bozuk JSON varsa sıfırdan başla
+            try {
+                j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+            }
+            catch (...) { j = nlohmann::json::object(); }
+        }
+
+        j[key] = DatabaseManager::GetInstance().CStringToAnsi(value);
+        Attributes = DatabaseManager::GetInstance().AnsiToCString(j.dump());
+    }
+    catch (...) {}
+}
+
+
+CString Vineyard_cstr::GetAttr(const std::string& key) const
+{
+    try {
+        if (Attributes.IsEmpty()) return _T("");
+        // DatabaseManager artık tam tanımlı, fonksiyonlarına erişebiliriz
+        auto j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+
+        if (j.contains(key)) {
+            if (j[key].is_string())
+                return DatabaseManager::GetInstance().AnsiToCString(j[key].get<std::string>());
+            return DatabaseManager::GetInstance().AnsiToCString(j[key].dump());
+        }
+    }
+    catch (...) {}
+    return _T("");
+}
+
+void Vineyard_cstr::SetAttr(const std::string& key, const CString& value)
+{
+    try {
+        nlohmann::json j;
+        if (!Attributes.IsEmpty()) {
+            // Hata önleme: Boş veya bozuk JSON varsa sıfırdan başla
+            try {
+                j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+            }
+            catch (...) { j = nlohmann::json::object(); }
+        }
+
+        j[key] = DatabaseManager::GetInstance().CStringToAnsi(value);
+        Attributes = DatabaseManager::GetInstance().AnsiToCString(j.dump());
+    }
+    catch (...) {}
+}
+
+
+CString Commercial_cstr::GetAttr(const std::string& key) const
+{
+    try {
+        if (Attributes.IsEmpty()) return _T("");
+        // DatabaseManager artık tam tanımlı, fonksiyonlarına erişebiliriz
+        auto j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+
+        if (j.contains(key)) {
+            if (j[key].is_string())
+                return DatabaseManager::GetInstance().AnsiToCString(j[key].get<std::string>());
+            return DatabaseManager::GetInstance().AnsiToCString(j[key].dump());
+        }
+    }
+    catch (...) {}
+    return _T("");
+}
+
+void Commercial_cstr::SetAttr(const std::string& key, const CString& value)
+{
+    try {
+        nlohmann::json j;
+        if (!Attributes.IsEmpty()) {
+            // Hata önleme: Boş veya bozuk JSON varsa sıfırdan başla
+            try {
+                j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+            }
+            catch (...) { j = nlohmann::json::object(); }
+        }
+
+        j[key] = DatabaseManager::GetInstance().CStringToAnsi(value);
+        Attributes = DatabaseManager::GetInstance().AnsiToCString(j.dump());
+    }
+    catch (...) {}
+}
+
+
+
+CString Car_cstr::GetAttr(const std::string& key) const
+{
+    try {
+        if (Attributes.IsEmpty()) return _T("");
+        auto j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+        if (j.contains(key)) {
+            if (j[key].is_string())
+                return DatabaseManager::GetInstance().AnsiToCString(j[key].get<std::string>());
+            return DatabaseManager::GetInstance().AnsiToCString(j[key].dump());
+        }
+    }
+    catch (...) {}
+    return _T("");
+}
+
+void Car_cstr::SetAttr(const std::string& key, const CString& value)
+{
+    try {
+        nlohmann::json j;
+        if (!Attributes.IsEmpty()) {
+            try { j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes)); }
+            catch (...) { j = nlohmann::json::object(); }
+        }
+        j[key] = DatabaseManager::GetInstance().CStringToAnsi(value);
+        Attributes = DatabaseManager::GetInstance().AnsiToCString(j.dump());
+    }
+    catch (...) {}
+}
+
+CString Appointment_cstr::GetAttr(const std::string& key) const
+{
+    try {
+        if (Attributes.IsEmpty()) return _T("");
+        auto j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+        if (j.contains(key)) {
+            if (j[key].is_string()) return DatabaseManager::GetInstance().AnsiToCString(j[key].get<std::string>());
+            return DatabaseManager::GetInstance().AnsiToCString(j[key].dump());
+        }
+    }
+    catch (...) {}
+    return _T("");
+}
+
+void Appointment_cstr::SetAttr(const std::string& key, const CString& value)
+{
+    try {
+        nlohmann::json j;
+        if (!Attributes.IsEmpty()) {
+            try { j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes)); }
+            catch (...) { j = nlohmann::json::object(); }
+        }
+        j[key] = DatabaseManager::GetInstance().CStringToAnsi(value);
+        Attributes = DatabaseManager::GetInstance().AnsiToCString(j.dump());
+    }
+    catch (...) {}
+}
+
+
+
+
+CString CompanyInfo_cstr::GetAttr(const std::string& key) const
+{
+    try {
+        if (Attributes.IsEmpty()) return _T("");
+        auto j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes));
+        if (j.contains(key)) {
+            if (j[key].is_string()) return DatabaseManager::GetInstance().AnsiToCString(j[key].get<std::string>());
+            return DatabaseManager::GetInstance().AnsiToCString(j[key].dump());
+        }
+    }
+    catch (...) {}
+    return _T("");
+}
+
+void CompanyInfo_cstr::SetAttr(const std::string& key, const CString& value)
+{
+    try {
+        nlohmann::json j;
+        if (!Attributes.IsEmpty()) {
+            try { j = nlohmann::json::parse(DatabaseManager::GetInstance().CStringToAnsi(Attributes)); }
+            catch (...) { j = nlohmann::json::object(); }
+        }
+        j[key] = DatabaseManager::GetInstance().CStringToAnsi(value);
+        Attributes = DatabaseManager::GetInstance().AnsiToCString(j.dump());
+    }
+    catch (...) {}
+}
+// =============================================================
+//  MERKEZİ VERİ HARİTALARI (REFLECTION MAPS)
+//  Tüm alan tanımları burada yapılır.
+// =============================================================
+
+
+// =============================================================
+// FİRMA BİLGİLERİ (COMPANY INFO) MAPPING
+// =============================================================
+template<>
+const std::vector<PropertyMap<CompanyInfo_cstr>>& GetProperties<CompanyInfo_cstr>()
+{
+    static std::vector<PropertyMap<CompanyInfo_cstr>> props = {
+        // Struct Üyesi           DB Kolon Adı      Resource ID         Görünen Ad      Tip
+        { &CompanyInfo_cstr::ID,          _T("ID"),          0,                  _T("ID"),       FT_INT }, // UI'da gizli
+        { &CompanyInfo_cstr::CompanyName, _T("CompanyName"), IDC_COMP_NAME,      _T("Firma Adı"),FT_TEXT },
+        { &CompanyInfo_cstr::OwnerName,   _T("OwnerName"),   IDC_COMP_OWNER,     _T("Yetkili"),  FT_TEXT },
+        { &CompanyInfo_cstr::TTBSNo,      _T("TTBSNo"),      IDC_COMP_TTBS,      _T("TTBS No"),  FT_TEXT },
+        { &CompanyInfo_cstr::TaxOffice,   _T("TaxOffice"),   IDC_COMP_TAX_OFF,   _T("Vergi D."), FT_TEXT },
+        { &CompanyInfo_cstr::TaxNo,       _T("TaxNo"),       IDC_COMP_TAX_NO,    _T("Vergi No"), FT_TEXT },
+        { &CompanyInfo_cstr::PhoneFixed,  _T("PhoneFixed"),  IDC_COMP_TEL_FIX,   _T("Sabit Tel"),FT_TEXT },
+        { &CompanyInfo_cstr::PhoneMobile, _T("PhoneMobile"), IDC_COMP_TEL_MOB,   _T("Cep Tel"),  FT_TEXT },
+        { &CompanyInfo_cstr::Email,       _T("Email"),       IDC_COMP_EMAIL,     _T("E-Posta"),  FT_TEXT },
+        { &CompanyInfo_cstr::Website,     _T("Website"),     IDC_COMP_WEB,       _T("Web"),      FT_TEXT },
+        { &CompanyInfo_cstr::Address,     _T("Address"),     IDC_COMP_ADDRESS,   _T("Adres"),    FT_MEMO },
+        { &CompanyInfo_cstr::LogoPath,    _T("LogoPath"),    IDC_COMP_LOGO_PATH, _T("Logo"),     FT_TEXT },
+        { &CompanyInfo_cstr::AboutUs,     _T("AboutUs"),     IDC_COMP_ABOUT,     _T("Hakkımızda"),FT_MEMO },
+    };
+    return props;
+}
+
+
+
+// =============================================================
+// 9. CAR (ARABA) MAPPING - EKSİK OLAN KISIM
+// =============================================================
+template<>
+const std::vector<PropertyMap<Car_cstr>>& GetProperties<Car_cstr>() {
+    static const std::vector<PropertyMap<Car_cstr>> props = {
+        // Struct Üyesi           DB Kolon Adı      Resource ID (Tahmini)  Görünen Ad      Tip         Genişlik  Görünürlük
+        { &Car_cstr::Cari_Kod,    _T("Cari_Kod"),   0,                     _T("Sahibi"),   FT_TEXT,    0,        false },
+        { &Car_cstr::Car_Code,    _T("Car_Code"),   IDC_EDIT_CAR_CODE,     _T("Araç Kodu"),FT_TEXT,    100,      true },
+
+        // İlan Bilgileri
+        { &Car_cstr::ListingNo,   _T("ListingNo"),  IDC_EDIT_ILAN_NO,      _T("İlan No"),  FT_TEXT,    80,       true },
+        { &Car_cstr::ListingDate, _T("ListingDate"),IDC_EDIT_LISTING_DATE, _T("Tarih"),    FT_DATE,    90,       true },
+        { &Car_cstr::WebsiteName, _T("WebsiteName"),IDC_COMBO_WEBSITE,     _T("Kaynak"),   FT_TEXT,    80,       false },
+        { &Car_cstr::ListingURL,  _T("ListingURL"), IDC_EDIT_URL,          _T("URL"),      FT_TEXT,    0,        false },
+
+        // Araç Temel Bilgileri
+        { &Car_cstr::Title,       _T("Title"),      IDC_EDIT_CAR_TITLE,        _T("Başlık"),   FT_TEXT,    150,      true },
+        { &Car_cstr::Brand,       _T("Brand"),      IDC_EDIT_CAR_BRAND,       _T("Marka"),    FT_TEXT,    100,      true },
+        { &Car_cstr::Series,      _T("Series"),     IDC_EDIT_CAR_SERIES,      _T("Seri"),     FT_TEXT,    100,      true },
+        { &Car_cstr::Model,       _T("Model"),      IDC_EDIT_CAR_MODEL,       _T("Model"),    FT_TEXT,    100,      true },
+        { &Car_cstr::Year,        _T("Year"),       IDC_EDIT_CAR_YEAR,         _T("Yıl"),      FT_TEXT,    60,       true },
+        { &Car_cstr::Km,          _T("Km"),         IDC_EDIT_CAR_KM,           _T("Km"),       FT_TEXT,    80,       true },
+
+        // Fiyat
+        { &Car_cstr::Price,       _T("Price"),      IDC_EDIT_CAR_PRICE,        _T("Fiyat"),    FT_DOUBLE,  100,      true },
+        { &Car_cstr::Currency,    _T("Currency"),   IDC_COMBO_CURRENCY,    _T("Birim"),    FT_TEXT,    50,       true },
+
+        // Teknik Özellikler
+        { &Car_cstr::FuelType,    _T("FuelType"),   IDC_EDIT_CAR_FUEL,        _T("Yakıt"),    FT_TEXT,    80,       true },
+        { &Car_cstr::Transmission,_T("Transmission"),IDC_EDIT_CAR_GEAR,       _T("Vites"),    FT_TEXT,    80,       true },
+        { &Car_cstr::EngineVolume,_T("EngineVolume"),IDC_EDIT_CAR_ENGVOL,  _T("Motor Hacmi"),FT_TEXT,  0,        false },
+        { &Car_cstr::EnginePower, _T("EnginePower"), IDC_EDIT_CAR_ENGPOWER,  _T("Motor Gücü"), FT_TEXT,  0,        false },
+        { &Car_cstr::Drive,       _T("Drive"),      IDC_EDIT_CAR_DRIVE,       _T("Çekiş"),    FT_TEXT,    0,        false },
+        { &Car_cstr::BodyType,    _T("BodyType"),   IDC_EDIT_CAR_BODY,        _T("Kasa Tipi"),FT_TEXT,    80,       false },
+        { &Car_cstr::Color,       _T("Color"),      IDC_EDIT_CAR_COLOR,       _T("Renk"),     FT_TEXT,    80,       false },
+
+        // Durum ve Ekspertiz
+        { &Car_cstr::DamageRecord,_T("DamageRecord"),IDC_EDIT_CAR_DAMAGE,      _T("Tramer"),   FT_TEXT,    80,       false },
+        { &Car_cstr::Warranty,    _T("Warranty"),   IDC_EDIT_CAR_WARRANTY,    _T("Garanti"),  FT_TEXT,    60,       false },
+        { &Car_cstr::Plate,       _T("Plate"),      IDC_EDIT_CAR_PLATE,        _T("Plaka"),    FT_TEXT,    0,        false }, // Genelde gizli
+        // Sahibinden ek alanlar
+        { &Car_cstr::City,            _T("City"),            IDC_EDIT_CAR_CITY,        _T("İl"),          FT_TEXT,  90,  false },
+        { &Car_cstr::District,        _T("District"),        IDC_EDIT_CAR_DISTRICT,    _T("İlçe"),        FT_TEXT,  90,  false },
+        { &Car_cstr::Neighborhood,    _T("Neighborhood"),    IDC_EDIT_CAR_NEIGHBOR,    _T("Mahalle"),     FT_TEXT,  90,  false },
+
+        { &Car_cstr::SellerName,      _T("SellerName"),      IDC_EDIT_CAR_SELLERNAME,  _T("Satıcı"),      FT_TEXT,  90,  false },
+        { &Car_cstr::SellerPhone,     _T("SellerPhone"),     IDC_EDIT_CAR_SELLERPHONE, _T("Telefon"),     FT_TEXT,  90,  false },
+
+        { &Car_cstr::VehicleCondition,_T("VehicleCondition"),IDC_EDIT_CAR_CONDITION,   _T("Araç Durumu"), FT_TEXT,  90,  false },
+        { &Car_cstr::FromWho,         _T("FromWho"),         IDC_EDIT_CAR_FROMWHO,     _T("Kimden"),      FT_TEXT,  90,  false },
+        { &Car_cstr::Swap,            _T("Swap"),            IDC_EDIT_CAR_SWAP,        _T("Takas"),       FT_TEXT,  90,  false },
+
+        { &Car_cstr::Description,     _T("Description"),     IDC_EDIT_CAR_DESC,        _T("Açıklama"),    FT_TEXT,   0,  false },
+        { &Car_cstr::SafetyFeatures,  _T("SafetyFeatures"),  IDC_EDIT_CAR_SAFETY,      _T("Güvenlik"),    FT_TEXT,   0,  false },
+        { &Car_cstr::InteriorFeatures,_T("InteriorFeatures"),IDC_EDIT_CAR_INTERIOR,    _T("İç Donanım"),  FT_TEXT,   0,  false },
+        { &Car_cstr::ExteriorFeatures,_T("ExteriorFeatures"),IDC_EDIT_CAR_EXTERIOR,    _T("Dış Donanım"), FT_TEXT,   0,  false },
+        { &Car_cstr::MultimediaFeatures,_T("MultimediaFeatures"),IDC_EDIT_CAR_MEDIA,   _T("Multimedya"),  FT_TEXT,   0,  false },
+
+        { &Car_cstr::PaintInfo,       _T("PaintInfo"),       IDC_EDIT_CAR_PAINTINFO,  _T("Ekspertiz"),   FT_TEXT,   0,  false },
+
+        // Diğer
+        { &Car_cstr::Notes,       _T("Notes"),      IDC_EDIT_CAR_NOTES,        _T("Notlar"),   FT_MEMO,    0,        false },
+        { &Car_cstr::Status,      _T("Status"),     IDC_COMBO_STATUS,      _T("Statü"),    FT_TEXT,    80,       false },
+        { &Car_cstr::Durum,       _T("Durum"),      IDC_COMBO_DURUM,       _T("Durum"),    FT_TEXT,    80,       true },
+
+        // Sistem
+        { &Car_cstr::sync_id,     _T("sync_id"),    0,                     _T("Sync ID"),  FT_TEXT,    0,        false },
+        { &Car_cstr::Updated_At,  _T("Updated_At"), 0,                     _T("Güncelleme"),FT_TEXT,   0,        false },
+        { &Car_cstr::Deleted,     _T("Deleted"),    0,                     _T("Silindi"),  FT_BOOL,    0,        false },
+        { &Car_cstr::Attributes,  _T("Attributes"), 0,                     _T("Özellikler"),FT_MEMO,   0,        false }
+    };
+    return props;
+}
+
+
+
+
+
+
+
+// 1. CUSTOMER
+template<> const std::vector<PropertyMap<Customer_cstr>>& GetProperties<Customer_cstr>() {
+    static const std::vector<PropertyMap<Customer_cstr>> props = {
+        { &Customer_cstr::Cari_Kod, _T("Cari_Kod"), IDC_EDIT_CARI_KOD, _T("Cari Kod"), FT_TEXT, 100, true },
+        { &Customer_cstr::AdSoyad, _T("AdSoyad"), IDC_EDIT_ADSOYAD, _T("Ad Soyad"), FT_TEXT, 200, true, false, { _T("OwnerName"), _T("Mülk Sahibi") } },
+        { &Customer_cstr::Telefon, _T("Telefon"), IDC_EDIT_TELEFON, _T("Telefon"), FT_TEXT, 120, true, false, { _T("OwnerPhone") } },
+        { &Customer_cstr::Telefon2, _T("Telefon2"), IDC_EDIT_TELEFON2, _T("Telefon 2"), FT_TEXT, 120, false, false, { _T("OwnerMobile") } },
+        { &Customer_cstr::Email, _T("Email"), IDC_EDIT_EMAIL, _T("E-Posta"), FT_TEXT, 150, true, false, { _T("OwnerEmail") } },
+        { &Customer_cstr::Adres, _T("Adres"), IDC_EDIT_ADRES, _T("Adres"), FT_MEMO, 0, false, false, { _T("OwnerAddress"), _T("Müşteri Adresi") } },
+        { &Customer_cstr::Sehir, _T("Sehir"), IDC_EDIT_SEHIR, _T("Şehir"), FT_TEXT, 100, true, false, { _T("OwnerCity"), _T("City") } },
+        { &Customer_cstr::Ilce, _T("Ilce"), IDC_EDIT_ILCE, _T("İlçe"), FT_TEXT, 100, true, false, { _T("OwnerDistrict"), _T("District") } },
+        { &Customer_cstr::TCKN, _T("TCKN"), IDC_EDIT_TCKN, _T("TC Kimlik"), FT_TEXT, 0, false, false, { _T("OwnerTC"), _T("TC Kimlik No") } },
+        { &Customer_cstr::VergiNo, _T("VergiNo"), IDC_EDIT_VERGINO, _T("Vergi No"), FT_TEXT, 0, false },
+        { &Customer_cstr::MusteriTipi, _T("MusteriTipi"), IDC_COMBO_MUSTERI_TIPI, _T("Tip"), FT_TEXT, 80, true },
+        { &Customer_cstr::KayitTarihi, _T("RegDate"), IDC_EDIT_KAYITTARIHI, _T("Tarih"), FT_DATE, 100, true },
+        { &Customer_cstr::Durum, _T("Durum"), IDC_COMBO_DURUM, _T("Durum"), FT_TEXT, 80, true },
+        { &Customer_cstr::Notlar, _T("Notlar"), IDC_EDIT_NOTLAR, _T("Notlar"), FT_MEMO, 0, false },
+        { &Customer_cstr::BabaAdi, _T("BabaAdi"), IDC_CUSTOMER_FATHERNAME, _T("Baba Adı"), FT_TEXT, 0, false },
+        { &Customer_cstr::DogumTarihi, _T("DogumTarihi"), IDC_BIRTHDATE, _T("D. Tarihi"), FT_DATE, 0, false },
+        { &Customer_cstr::Uyruk, _T("Nationality"), 0, _T("Uyruk"), FT_TEXT, 0, false },
+        { &Customer_cstr::KimlikSeriNo, _T("KimlikSeriNo"), 0, _T("Seri No"), FT_TEXT, 0, false },
+        { &Customer_cstr::MedeniHal, _T("MedeniHal"), 0, _T("Medeni Hal"), FT_TEXT, 0, false },
+        { &Customer_cstr::IBAN, _T("IBAN"), IDC_IBANNO, _T("IBAN"), FT_TEXT, 0, false },
+        { &Customer_cstr::BankaAdi, _T("BankaAdi"), IDC_BANKNAME, _T("Banka Adı"), FT_TEXT, 0, false },
+        { &Customer_cstr::VergiDairesi, _T("VergiDairesi"), 0, _T("V. Dairesi"), FT_TEXT, 0, false },
+        { &Customer_cstr::YetkiliKisi, _T("YetkiliKisi"), 0, _T("Yetkili"), FT_TEXT, 0, false },
+        { &Customer_cstr::Calisma_Durumu, _T("Calisma_Durumu"), 0, _T("Çalışma"), FT_TEXT, 0, false },
+        { &Customer_cstr::Status, _T("Status"), 0, _T("Statü"), FT_TEXT, 0, false },
+        // Sistem
+        { &Customer_cstr::sync_id, _T("sync_id"), 0, _T("Sync ID"), FT_TEXT, 0, false },
+        { &Customer_cstr::Updated_At, _T("Updated_At"), 0, _T("Güncelleme"), FT_TEXT, 0, false },
+        { &Customer_cstr::Deleted, _T("Deleted"), 0, _T("Silindi"), FT_BOOL, 0, false },
+        { &Customer_cstr::Attributes, _T("Attributes"), 0, _T("Özellikler"), FT_MEMO, 0, false }
+    };
+    return props;
+}
+
+// src/dataIsMe.cpp içine yapıştırılacak (Eskisinin yerine)
+
+// =============================================================
+//  2. KONUT (HOME) FABRİKASI - EKSİKSİZ ID EŞLEŞTİRMESİ
+// =============================================================
+template<>
+const std::vector<PropertyMap<Home_cstr>>& GetProperties<Home_cstr>() {
+    static const std::vector<PropertyMap<Home_cstr>> props = {
+        // { Member Pointer,            DB Name,            Res ID (resource.h),    Label,           Type,      Width, Vis,   Attr }
+
+        // --- Temel Bilgiler ---
+        { &Home_cstr::Cari_Kod,         _T("Cari_Kod"),     IDC_EDIT_CARI_KOD,      _T("Mülk Sahibi"), FT_TEXT,   120,   true },
+        { &Home_cstr::Home_Code,        _T("Home_Code"),    ID_EDIT_HOME_CODE,      _T("Emlak Kodu"),  FT_TEXT,   100,   true },
+        { &Home_cstr::ListingNo, _T("ListingNo"), IDC_EDIT_ILAN_NO, _T("İlan No"), FT_TEXT, 80, true, false, { _T("RefNo") } },
+        { &Home_cstr::ListingDate, _T("ListingDate"), IDC_EDIT_LISTING_DATE, _T("İlan Tarihi"), FT_DATE, 90, true, false, { _T("Date") } },
+        { &Home_cstr::PropertyType,     _T("PropertyType"), IDC_EDIT_PROPERTY_TYPE, _T("Emlak Tipi"), FT_TEXT,     100, true },
+        // --- Konum ---
+        { &Home_cstr::Address, _T("Address"), ID_EDIT_ADRES, _T("Adres"), FT_MEMO, 250, true, false, { _T("FullAddress"), _T("Açık Adres"), _T("Mülk Açık Adresi") } },
+        { &Home_cstr::City,             _T("City"),         IDC_EDIT_CITY,          _T("İl"),          FT_TEXT,   100,   true },
+        { &Home_cstr::District,         _T("District"),     IDC_EDIT_DISTRICT,      _T("İlçe"),        FT_TEXT,   100,   true },
+        { &Home_cstr::Neighborhood,     _T("Neighborhood"), IDC_EDIT_NEIGHBORHOOD,  _T("Mahalle"),     FT_TEXT,   100,   true },
+        { &Home_cstr::Location,         _T("Location"),     ID_EDIT_LOKASYON,       _T("Lokasyon"),    FT_TEXT,   150,   false },
+
+        // --- Fiyat ve Finansal ---
+        { &Home_cstr::Price,            _T("Price"),        ID_EDIT_FIYAT,          _T("Fiyat"),       FT_DOUBLE, 100,   true },
+        { &Home_cstr::Currency,         _T("Currency"),     IDC_COMBO_CURRENCY,     _T("Birim"),       FT_TEXT,   50,    true },
+        { &Home_cstr::PricePerM2, _T("PricePerM2"), IDC_EDIT_PRICE_PER_M2, _T("m² Fiyatı"), FT_DOUBLE, 80, true, false, { _T("m² Birim Fiyatı") } },
+        { &Home_cstr::Dues,             _T("Dues"),         IDC_EDIT_AIDAT,         _T("Aidat"),       FT_DOUBLE, 70,    false },
+        { &Home_cstr::CreditEligible, _T("CreditEligible"), IDC_COMBO_CREDIT_ELIGIBLE, _T("Kredi"), FT_TEXT, 60, false, false, { _T("Krediye Uygun") } },
+        { &Home_cstr::Swap,             _T("Swap"),         IDC_COMBO_SWAP,         _T("Takas"),       FT_TEXT,   60,    false },
+
+        // --- Fiziksel Özellikler ---
+        { &Home_cstr::RoomCount, _T("RoomCount"), ID_EDIT_ODASAYISI, _T("Oda"), FT_TEXT, 60, true, false, { _T("Oda Sayısı"), _T("Rooms") } },
+        { &Home_cstr::NetArea, _T("NetArea"), ID_EDIT_NETM2, _T("Net m²"), FT_DOUBLE, 70, true, false, { _T("Net Alan") } },
+        { &Home_cstr::GrossArea, _T("GrossArea"), ID_EDIT_BRUTM2, _T("Brüt m²"), FT_DOUBLE, 70, false, false, { _T("Brüt Alan") } },
+        { &Home_cstr::Floor, _T("Floor"), ID_EDIT_KAT, _T("Kat"), FT_TEXT, 60, true, false, { _T("FloorLocation"), _T("Bulunduğu Kat") } },
+        { &Home_cstr::TotalFloor, _T("TotalFloor"), IDC_EDIT_KAT_SAYISI, _T("Kat Sayısı"), FT_TEXT, 60, false, false, { _T("TotalFloors") } },
+        { &Home_cstr::BuildingAge,      _T("BuildingAge"),  ID_EDIT_BINAYASI,       _T("Bina Yaşı"),   FT_TEXT,   60,    false },
+        { &Home_cstr::HeatingType, _T("HeatingType"), ID_COMBO_ISITMA, _T("Isıtma"), FT_TEXT, 80, true, false, { _T("Isıtma Tipi"), _T("Heating") } },
+        { &Home_cstr::BathroomCount, _T("BathroomCount"), IDC_EDIT_BANYO_SAYISI, _T("Banyo"), FT_TEXT, 50, false, false, { _T("Banyo Sayısı") } },
+        { &Home_cstr::KitchenType,      _T("KitchenType"),  IDC_COMBO_MUTFAK,       _T("Mutfak"),      FT_TEXT,   80,    false },
+        { &Home_cstr::Balcony,          _T("Balcony"),      IDC_COMBO_BALCONY,      _T("Balkon"),      FT_TEXT,   60,    false },
+        { &Home_cstr::Elevator,         _T("Elevator"),     IDC_COMBO_ELEVATOR,     _T("Asansör"),     FT_TEXT,   60,    false },
+        { &Home_cstr::Parking,          _T("Parking"),      IDC_COMBO_PARKING,      _T("Otopark"),     FT_TEXT,   70,    false },
+        { &Home_cstr::Furnished,        _T("Furnished"),    IDC_COMBO_ESYALI,       _T("Eşyalı"),      FT_TEXT,   60,    true },
+        { &Home_cstr::InSite, _T("InSite"), IDC_COMBO_INSITE, _T("Site İçi"), FT_TEXT, 60, false, false, { _T("Site İçerisinde"), _T("IsInSite") } },
+        { &Home_cstr::SiteName,         _T("SiteName"),     IDC_EDIT_SITE_ADI,      _T("Site Adı"),    FT_TEXT,   120,   false },
+
+        // --- Tapu ve Yetki ---
+        { &Home_cstr::Ada,              _T("Ada"),          IDC_EDIT_ADA,           _T("Ada"),         FT_TEXT,   50,    false },
+        { &Home_cstr::Parsel,           _T("Parsel"),       IDC_EDIT_PARSEL,        _T("Parsel"),      FT_TEXT,   50,    false },
+        { &Home_cstr::Pafta,            _T("Pafta"),        IDC_EDIT_PAFTA,         _T("Pafta"),       FT_TEXT,   50,    false },
+        { &Home_cstr::DeedStatus,       _T("DeedStatus"),   IDC_COMBO_DEED_STATUS,  _T("Tapu Durumu"), FT_TEXT,   100,   false },
+        { &Home_cstr::YetkiBaslangic, _T("YetkiBaslangic"), IDC_EDIT_YETKI_BASLANGIC, _T("Yetki Baş."), FT_DATE, 80, false, false, { _T("AuthStart"), _T("YetkiBaslangic") } },
+        { &Home_cstr::YetkiBitis, _T("YetkiBitis"), IDC_EDIT_YETKI_BITIS, _T("Yetki Bit."), FT_DATE, 80, false, false, { _T("AuthEnd"), _T("YetkiBitis") } },
+        { &Home_cstr::SellerType,       _T("SellerType"),   IDC_COMBO_SELLER_TYPE,  _T("Kimden"),      FT_TEXT,   80,    false },
+
+        // --- Diğer / Notlar / Ticari ---
+        { &Home_cstr::UsageStatus,      _T("UsageStatus"),  IDC_COMBO_USAGE_STATUS, _T("Kullanım"),    FT_TEXT,   80,    false },
+        { &Home_cstr::Status,           _T("Status"),       IDC_COMBO_STATUS,       _T("Durum"),       FT_TEXT,   80,    true },
+        { &Home_cstr::WebsiteName,      _T("WebsiteName"),  IDC_COMBO_WEBSITE,      _T("Kaynak"),      FT_TEXT,   80,    false },
+        { &Home_cstr::ListingURL,       _T("ListingURL"),   IDC_EDIT_URL,           _T("URL"),         FT_TEXT,   0,     false },
+        { &Home_cstr::NoteGeneral,      _T("NoteGeneral"),  IDC_EDIT_NOTE_GENERAL,  _T("Genel Not"),   FT_MEMO,   0,     false },
+        { &Home_cstr::NoteInternal,     _T("NoteInternal"), IDC_EDIT_NOTE_INTERNAL, _T("Özel Not"),    FT_MEMO,   0,     false },
+
+        { &Home_cstr::PurchaseDate,     _T("PurchaseDate"), IDC_EDIT_PURCHASE_DATE, _T("Alış Tarihi"), FT_DATE,   80,    false },
+        { &Home_cstr::PurchasePrice,    _T("PurchasePrice"),IDC_EDIT_PURCHASE_PRICE,_T("Alış Fiyatı"), FT_DOUBLE, 80,    false },
+        { &Home_cstr::SaleDate,         _T("SaleDate"),     IDC_EDIT_SALE_DATE,     _T("Satış Tarihi"),FT_DATE,   80,    false },
+        { &Home_cstr::SalePrice,        _T("SalePrice"),    IDC_EDIT_SALE_PRICE,    _T("Satış Fiyatı"),FT_DOUBLE, 80,    false },
+
+        { &Home_cstr::EnergyClass,      _T("EnergyClass"),  IDC_EDIT_ENERGY_CLASS,  _T("Enerji"),      FT_TEXT,   0,     false },
+        { &Home_cstr::GeoLatitude,      _T("GeoLatitude"),  IDC_EDIT_GEO_LAT,       _T("Enlem"),       FT_TEXT,   0,     false },
+        { &Home_cstr::GeoLongitude,     _T("GeoLongitude"), IDC_EDIT_GEO_LON,       _T("Boylam"),      FT_TEXT,   0,     false },
+        { &Home_cstr::PhotoCount,       _T("PhotoCount"),   IDC_EDIT_PHOTO_COUNT,   _T("Foto"),        FT_INT,    0,     false },
+
+        // --- Sahibinden Özellikler (Resim 2-3-4) ---
+        // UI tarafında Seviye-2 mimari ile dinamik tab sayfalarında gösterilecek.
+        // Bu alanlar DB'ye JSON array string (veya CSV) olarak saklanır.
+        { &Home_cstr::Facades,              _T("Facades"),              0, _T("Cephe"),              FT_MEMO, 0, false,
+            false, { _T("Cephe"), _T("Cepheler") } },
+        { &Home_cstr::FeaturesInterior,     _T("FeaturesInterior"),     0, _T("İç Özellikler"),      FT_MEMO, 0, false,
+            false, { _T("İç Özellikler"), _T("IcOzellikler") } },
+        { &Home_cstr::FeaturesExterior,     _T("FeaturesExterior"),     0, _T("Dış Özellikler"),     FT_MEMO, 0, false,
+            false, { _T("Dış Özellikler"), _T("DisOzellikler") } },
+        { &Home_cstr::FeaturesNeighborhood, _T("FeaturesNeighborhood"), 0, _T("Muhit"),              FT_MEMO, 0, false,
+            false, { _T("Muhit"), _T("Çevre"), _T("Cevre") } },
+        { &Home_cstr::FeaturesTransport,    _T("FeaturesTransport"),    0, _T("Ulaşım"),            FT_MEMO, 0, false,
+            false, { _T("Ulaşım"), _T("Ulasim") } },
+        { &Home_cstr::FeaturesView,         _T("FeaturesView"),         0, _T("Manzara"),            FT_MEMO, 0, false,
+            false, { _T("Manzara") } },
+        { &Home_cstr::HousingType,          _T("HousingType"),          0, _T("Konut Tipi"),         FT_TEXT, 0, false,
+            false, { _T("Konut Tipi"), _T("KonutTuru"), _T("Konut Tip") } },
+        { &Home_cstr::FeaturesAccessibility,_T("FeaturesAccessibility"),0, _T("Engelli Uygun"),      FT_MEMO, 0, false,
+            false, { _T("Engelli"), _T("Engelli ve Yaşlıya Uygun") } },
+
+        // --- Sistem Alanları ---
+        { &Home_cstr::sync_id,          _T("sync_id"),      0,                      _T("Sync ID"),     FT_TEXT,   0,     false },
+        { &Home_cstr::Updated_At,        _T("Updated_At"),    IDC_EDIT_UPDATED_AT,    _T("Güncelleme"),  FT_TEXT,   120,   false },
+        { &Home_cstr::Deleted,          _T("Deleted"),      0,                      _T("Silindi"),     FT_BOOL,   0,     false },
+        { &Home_cstr::Attributes,       _T("Attributes"),   0,                      _T("Özellikler"),  FT_MEMO,   0,     false }
+    };
+    return props;
+}
+// 3. LAND (ARSA)
+template<> const std::vector<PropertyMap<Land_cstr>>& GetProperties<Land_cstr>() {
+    static const std::vector<PropertyMap<Land_cstr>> props = [] {
+        std::vector<PropertyMap<Land_cstr>> v;
+        v.reserve(64);
+
+        auto PM = [&](CString Land_cstr::* member, const TCHAR* dbName, UINT resID, const TCHAR* label,
+                      FieldType type, int width, bool visible, bool isAttribute,
+                      std::initializer_list<LPCTSTR> aliases = {}) -> PropertyMap<Land_cstr> {
+            PropertyMap<Land_cstr> pm{};
+            pm.member = understand();
+        };
+        return v;
+    }();
+    return props;
+}
+
+
+// 4. FIELD (TARLA)
+template<> const std::vector<PropertyMap<Field_cstr>>& GetProperties<Field_cstr>() {
+    static const std::vector<PropertyMap<Field_cstr>> props = {
+        { &Field_cstr::Cari_Kod,               _T("Cari_Kod"), IDC_FLD_CARI_KOD,                  _T("Sahibi"), FT_TEXT, 0, false },
+        { &Field_cstr::Field_Code,             _T("Field_Code"), IDC_FLD_CODE,                  _T("Tarla Kodu"), FT_TEXT, 100, true },
+        { &Field_cstr::ListingNo,              _T("ListingNo"), IDC_FLD_LISTING_NO,                  _T("İlan No"), FT_TEXT, 80, true },
+        { &Field_cstr::ListingDate,            _T("ListingDate"), IDC_FLD_ILAN_DATE,                  _T("İlan Tarihi"), FT_DATE, 90, true },
+        { &Field_cstr::Adres,                  _T("Adres"), IDC_FLD_ADDRESS,                  _T("Adres"), FT_MEMO, 200, true },
+        { &Field_cstr::Lokasyon,               _T("Lokasyon"), IDC_FLD_LOCATION,                  _T("Lokasyon"), FT_TEXT, 150, true },
+        { &Field_cstr::Metrekare,              _T("Metrekare"), IDC_FLD_AREA_M2,                  _T("m²"), FT_DOUBLE, 80, true },
+        { &Field_cstr::Fiyat,                  _T("Fiyat"), IDC_FLD_PRICE,                  _T("Fiyat"), FT_DOUBLE, 100, true },
+        { &Field_cstr::Currency,               _T("Currency"), 0,                  _T("Birim"), FT_TEXT, 50, true },
+        { &Field_cstr::PricePerM2,             _T("PricePerM2"), IDC_FLD_PRICE_PER_M2,                  _T("m² Fiyatı"), FT_DOUBLE, 80, true },
+        { &Field_cstr::ToprakTuru,             _T("ToprakTuru"), IDC_FLD_TOPRAK,                  _T("Toprak"), FT_TEXT, 100, true },
+        { &Field_cstr::Sulama,                 _T("Sulama"), IDC_FLD_SULAMA,                  _T("Sulama"), FT_TEXT, 80, true },
+        { &Field_cstr::Ulasim,                 _T("Ulasim"), IDC_FLD_ACCESS,                  _T("Ulaşım"), FT_TEXT, 80, true },
+        { &Field_cstr::Ada,                    _T("Ada"), IDC_FLD_ADA,                  _T("Ada"), FT_TEXT, 60, true },
+        { &Field_cstr::Parsel,                 _T("Parsel"), IDC_FLD_PARSEL,                  _T("Parsel"), FT_TEXT, 60, true },
+        { &Field_cstr::Pafta,                  _T("Pafta"), IDC_FLD_PAFTA,                  _T("Pafta"), FT_TEXT, 60, false },
+        { &Field_cstr::ImarDurumu,             _T("ImarDurumu"), IDC_FLD_IMAR,                  _T("İmar"), FT_TEXT, 100, true },
+        { &Field_cstr::DeedStatus,             _T("DeedStatus"), IDC_FLD_DEED_STATUS,                  _T("Tapu"), FT_TEXT, 100, true },
+        { &Field_cstr::Kaks,                   _T("Kaks"), IDC_COMBO_FIELD_KAKS,                  _T("KAKS"), FT_TEXT, 60, false },
+        { &Field_cstr::Gabari,                 _T("Gabari"), IDC_FLD_GABARI,                  _T("Gabari"), FT_TEXT, 60, false },
+        { &Field_cstr::CreditEligible,         _T("CreditEligible"), IDC_FLD_CREDIT,                  _T("Kredi"), FT_TEXT, 60, false },
+        { &Field_cstr::SellerType,             _T("SellerType"), IDC_FLD_SELLER,                  _T("Kimden"), FT_TEXT, 80, true },
+        { &Field_cstr::Swap,                   _T("Swap"), IDC_FLD_SWAP,                  _T("Takas"), FT_TEXT, 60, false },
+        { &Field_cstr::Teklifler,              _T("Teklifler"), IDC_FLD_TEKLIFLER,                  _T("Teklifler"), FT_MEMO, 0, false },
+        { &Field_cstr::Durum,                  _T("Durum"), IDC_FLD_DURUM,                  _T("Durum"), FT_TEXT, 80, true },
+        { &Field_cstr::Status,                 _T("Status"), 0,                  _T("Statü"), FT_TEXT, 80, false },
+        { &Field_cstr::RawKML,                 _T("RawKML"), 0,                  _T("KML"), FT_MEMO, 0, false },
+        { &Field_cstr::PropertyType,           _T("PropertyType"), 0,                  _T("Tip"), FT_TEXT, 0, false },
+        { &Field_cstr::YetkiBaslangic,         _T("YetkiBaslangic"), 0,                  _T("Yetki Baş."), FT_DATE, 0, false },
+        { &Field_cstr::YetkiBitis,             _T("YetkiBitis"), 0,                  _T("Yetki Bit."), FT_DATE, 0, false },
+        // Sistem
+        { &Field_cstr::sync_id,                _T("sync_id"), 0,                  _T("Sync ID"), FT_TEXT, 0, false },
+        { &Field_cstr::Updated_At,              _T("Updated_At"), 0,                  _T("Güncelleme"), FT_TEXT, 0, false },
+        { &Field_cstr::Deleted,                _T("Deleted"), 0,                  _T("Silindi"), FT_BOOL, 0, false },
+        { &Field_cstr::Attributes,             _T("Attributes"), 0,                  _T("Özellikler"), FT_MEMO, 0, false }
+    };
+    return props;
+}
+
+// 5. VINEYARD (BAĞ/BAHÇE)
+template<> const std::vector<PropertyMap<Vineyard_cstr>>& GetProperties<Vineyard_cstr>() {
+    static const std::vector<PropertyMap<Vineyard_cstr>> props = {
+        { &Vineyard_cstr::Cari_Kod, _T("Cari_Kod"), 0, _T("Sahibi"), FT_TEXT, 0, false },
+        { &Vineyard_cstr::Vineyard_Code, _T("Vineyard_Code"), IDC_EDIT_VINEYARD_CODE, _T("Bağ Kodu"), FT_TEXT, 100, true },
+        { &Vineyard_cstr::Adres, _T("Adres"), IDC_EDIT_VINEYARD_ADRES, _T("Adres"), FT_MEMO, 200, true },
+        { &Vineyard_cstr::Lokasyon, _T("Lokasyon"), IDC_EDIT_VINEYARD_LOKASYON, _T("Lokasyon"), FT_TEXT, 150, true },
+        { &Vineyard_cstr::Metrekare, _T("Metrekare"), IDC_EDIT_VINEYARD_M2, _T("m²"), FT_DOUBLE, 80, true },
+        { &Vineyard_cstr::AgacSayisi, _T("AgacSayisi"), IDC_EDIT_VINEYARD_AGAC, _T("Ağaç Sayısı"), FT_INT, 80, true },
+        { &Vineyard_cstr::UrunTuru, _T("UrunTuru"), IDC_COMBO_VINEYARD_URUN, _T("Ürün"), FT_TEXT, 100, true },
+        { &Vineyard_cstr::Sulama, _T("Sulama"), IDC_COMBO_VINEYARD_SULAMA, _T("Sulama"), FT_TEXT, 80, true },
+        { &Vineyard_cstr::Fiyat, _T("Fiyat"), IDC_EDIT_VINEYARD_FIYAT, _T("Fiyat"), FT_DOUBLE, 100, true },
+        { &Vineyard_cstr::Currency, _T("Currency"), 0, _T("Birim"), FT_TEXT, 50, true },
+        { &Vineyard_cstr::Ada, _T("Ada"), 0, _T("Ada"), FT_TEXT, 60, true },
+        { &Vineyard_cstr::Parsel, _T("Parsel"), 0, _T("Parsel"), FT_TEXT, 60, true },
+        { &Vineyard_cstr::Pafta, _T("Pafta"), 0, _T("Pafta"), FT_TEXT, 60, false },
+        { &Vineyard_cstr::YetkiBaslangic, _T("YetkiBaslangic"), 0, _T("Yetki Baş."), FT_DATE, 0, false },
+        { &Vineyard_cstr::YetkiBitis, _T("YetkiBitis"), 0, _T("Yetki Bit."), FT_DATE, 0, false },
+        { &Vineyard_cstr::Teklifler, _T("Teklifler"), IDC_EDIT_VINEYARD_TEKLIFLER, _T("Teklifler"), FT_MEMO, 0, false },
+        { &Vineyard_cstr::Durum, _T("Durum"), IDC_EDIT_VINEYARD_DURUM, _T("Durum"), FT_TEXT, 80, true },
+        { &Vineyard_cstr::Status, _T("Status"), 0, _T("Statü"), FT_TEXT, 80, false },
+        // Sistem
+        { &Vineyard_cstr::sync_id, _T("sync_id"), 0, _T("Sync ID"), FT_TEXT, 0, false },
+        { &Vineyard_cstr::Updated_At, _T("Updated_At"), 0, _T("Güncelleme"), FT_TEXT, 0, false },
+        { &Vineyard_cstr::Deleted, _T("Deleted"), 0, _T("Silindi"), FT_BOOL, 0, false },
+        { &Vineyard_cstr::Attributes, _T("Attributes"), 0, _T("Özellikler"), FT_MEMO, 0, false }
+    };
+    return props;
+}
+
+// 6. VILLA
+template<> const std::vector<PropertyMap<Villa_cstr>>& GetProperties<Villa_cstr>() {
+    static const std::vector<PropertyMap<Villa_cstr>> props = {
+        { &Villa_cstr::Cari_Kod, _T("Cari_Kod"), 0, _T("Sahibi"), FT_TEXT, 0, false },
+        { &Villa_cstr::Villa_Code, _T("Villa_Code"), IDC_EDIT_VILLA_CODE, _T("Villa Kodu"), FT_TEXT, 100, true },
+        { &Villa_cstr::Adres, _T("Adres"), IDC_EDIT_VILLA_ADRES, _T("Adres"), FT_MEMO, 200, true },
+        { &Villa_cstr::Lokasyon, _T("Lokasyon"), IDC_EDIT_VILLA_LOKASYON, _T("Lokasyon"), FT_TEXT, 150, true },
+        { &Villa_cstr::Ada, _T("Ada"), 0, _T("Ada"), FT_TEXT, 60, true },
+        { &Villa_cstr::Parsel, _T("Parsel"), 0, _T("Parsel"), FT_TEXT, 60, true },
+        { &Villa_cstr::Pafta, _T("Pafta"), 0, _T("Pafta"), FT_TEXT, 60, false },
+        { &Villa_cstr::OdaSayisi, _T("OdaSayisi"), IDC_EDIT_VILLA_ODA, _T("Oda"), FT_TEXT, 60, true },
+        { &Villa_cstr::NetMetrekare, _T("NetMetrekare"), IDC_EDIT_VILLA_NETM2, _T("Net m²"), FT_DOUBLE, 80, true },
+        { &Villa_cstr::BrutMetrekare, _T("BrutMetrekare"), IDC_EDIT_VILLA_BRUTM2, _T("Brüt m²"), FT_DOUBLE, 80, true },
+        { &Villa_cstr::KatSayisi, _T("KatSayisi"), IDC_EDIT_VILLA_KAT, _T("Kat"), FT_TEXT, 60, true },
+        { &Villa_cstr::Havuz, _T("Havuz"), IDC_COMBO_VILLA_HAVUZ, _T("Havuz"), FT_TEXT, 80, true },
+        { &Villa_cstr::Bahce, _T("Bahce"), IDC_COMBO_VILLA_BAHCE, _T("Bahçe"), FT_TEXT, 80, true },
+        { &Villa_cstr::Garaj, _T("Garaj"), IDC_COMBO_VILLA_GARAJ, _T("Garaj"), FT_TEXT, 80, true },
+        { &Villa_cstr::Fiyat, _T("Fiyat"), IDC_EDIT_VILLA_FIYAT, _T("Fiyat"), FT_DOUBLE, 100, true },
+        { &Villa_cstr::Currency, _T("Currency"), 0, _T("Birim"), FT_TEXT, 50, true },
+        { &Villa_cstr::YetkiBaslangic, _T("YetkiBaslangic"), 0, _T("Yetki Baş."), FT_DATE, 0, false },
+        { &Villa_cstr::YetkiBitis, _T("YetkiBitis"), 0, _T("Yetki Bit."), FT_DATE, 0, false },
+        { &Villa_cstr::Teklifler, _T("Teklifler"), IDC_EDIT_VILLA_TEKLIFLER, _T("Teklifler"), FT_MEMO, 0, false },
+        { &Villa_cstr::Durum, _T("Durum"), IDC_EDIT_VILLA_DURUM, _T("Durum"), FT_TEXT, 80, true },
+        { &Villa_cstr::Status, _T("Status"), 0, _T("Statü"), FT_TEXT, 80, false },
+        // Sistem
+        { &Villa_cstr::sync_id, _T("sync_id"), 0, _T("Sync ID"), FT_TEXT, 0, false },
+        { &Villa_cstr::Updated_At, _T("Updated_At"), 0, _T("Güncelleme"), FT_TEXT, 0, false },
+        { &Villa_cstr::Deleted, _T("Deleted"), 0, _T("Silindi"), FT_BOOL, 0, false },
+        { &Villa_cstr::Attributes, _T("Attributes"), 0, _T("Özellikler"), FT_MEMO, 0, false }
+    };
+    return props;
+}
+
+// 7. COMMERCIAL
+template<> const std::vector<PropertyMap<Commercial_cstr>>& GetProperties<Commercial_cstr>() {
+    static const std::vector<PropertyMap<Commercial_cstr>> props = {
+        { &Commercial_cstr::Cari_Kod, _T("Cari_Kod"), 0, _T("Sahibi"), FT_TEXT, 0, false },
+        { &Commercial_cstr::Commercial_Code, _T("Commercial_Code"), IDC_EDIT_COMM_CODE, _T("Ticari Kodu"), FT_TEXT, 100, true },
+        { &Commercial_cstr::Adres, _T("Adres"), IDC_EDIT_COMM_ADRES, _T("Adres"), FT_MEMO, 200, true },
+        { &Commercial_cstr::Lokasyon, _T("Lokasyon"), IDC_EDIT_COMM_LOKASYON, _T("Lokasyon"), FT_TEXT, 150, true },
+        { &Commercial_cstr::Alan, _T("Alan"), IDC_EDIT_COMM_ALAN, _T("Alan (m²)"), FT_DOUBLE, 80, true },
+        { &Commercial_cstr::Kat, _T("Kat"), IDC_EDIT_COMM_KAT, _T("Kat"), FT_TEXT, 60, true },
+        { &Commercial_cstr::Cephe, _T("Cephe"), IDC_COMBO_COMM_CEPHE, _T("Cephe"), FT_TEXT, 80, true },
+        { &Commercial_cstr::Kullanim, _T("Kullanim"), IDC_COMBO_COMM_KULLANIM, _T("Kullanım"), FT_TEXT, 100, true },
+        { &Commercial_cstr::Fiyat, _T("Fiyat"), IDC_EDIT_COMM_FIYAT, _T("Fiyat"), FT_DOUBLE, 100, true },
+        { &Commercial_cstr::Currency, _T("Currency"), 0, _T("Birim"), FT_TEXT, 50, true },
+        { &Commercial_cstr::Ada, _T("Ada"), 0, _T("Ada"), FT_TEXT, 60, true },
+        { &Commercial_cstr::Parsel, _T("Parsel"), 0, _T("Parsel"), FT_TEXT, 60, true },
+        { &Commercial_cstr::Pafta, _T("Pafta"), 0, _T("Pafta"), FT_TEXT, 60, false },
+        { &Commercial_cstr::YetkiBaslangic, _T("YetkiBaslangic"), 0, _T("Yetki Baş."), FT_DATE, 0, false },
+        { &Commercial_cstr::YetkiBitis, _T("YetkiBitis"), 0, _T("Yetki Bit."), FT_DATE, 0, false },
+        { &Commercial_cstr::Teklifler, _T("Teklifler"), IDC_EDIT_COMM_TEKLIFLER, _T("Teklifler"), FT_MEMO, 0, false },
+        { &Commercial_cstr::Durum, _T("Durum"), IDC_EDIT_COMM_DURUM, _T("Durum"), FT_TEXT, 80, true },
+        { &Commercial_cstr::Status, _T("Status"), 0, _T("Statü"), FT_TEXT, 80, false },
+        // Sistem
+        { &Commercial_cstr::sync_id, _T("sync_id"), 0, _T("Sync ID"), FT_TEXT, 0, false },
+        { &Commercial_cstr::Updated_At, _T("Updated_At"), 0, _T("Güncelleme"), FT_TEXT, 0, false },
+        { &Commercial_cstr::Deleted, _T("Deleted"), 0, _T("Silindi"), FT_BOOL, 0, false },
+        { &Commercial_cstr::Attributes, _T("Attributes"), 0, _T("Özellikler"), FT_MEMO, 0, false }
+    };
+    return props;
+}
+
+// 8. OFFERS
+template<> const std::vector<PropertyMap<Offer_cstr>>& GetProperties<Offer_cstr>() {
+    static const std::vector<PropertyMap<Offer_cstr>> props = {
+        { &Offer_cstr::OfferID, _T("OfferID"), 0, _T("Teklif ID"), FT_INT, 50, true },
+        { &Offer_cstr::PropertyID, _T("PropertyID"), 0, _T("Emlak ID"), FT_TEXT, 100, true },
+        { &Offer_cstr::CustomerID, _T("CustomerID"), 0, _T("Müşteri"), FT_TEXT, 150, true },
+        { &Offer_cstr::OfferPrice, _T("OfferPrice"), 0, _T("Teklif Fiyatı"), FT_DOUBLE, 100, true },
+        { &Offer_cstr::OfferDate, _T("OfferDate"), 0, _T("Tarih"), FT_DATE, 100, true },
+        { &Offer_cstr::PaymentMethod, _T("PaymentMethod"), 0, _T("Ödeme Şekli"), FT_TEXT, 100, false },
+        { &Offer_cstr::DepositAmount, _T("DepositAmount"), 0, _T("Kapora"), FT_DOUBLE, 100, false },
+        { &Offer_cstr::ValidityDate, _T("ValidityDate"), 0, _T("Geçerlilik"), FT_DATE, 100, false },
+        { &Offer_cstr::Status, _T("Status"), 0, _T("Durum"), FT_TEXT, 80, true },
+        { &Offer_cstr::Notes, _T("Notes"), 0, _T("Notlar"), FT_MEMO, 0, false }
+    };
+    return props;
+}
+
+
+// src/dataIsMe.cpp içine:
+
+template<> const std::vector<PropertyMap<Appointment_cstr>>& GetProperties<Appointment_cstr>() {
+    static const std::vector<PropertyMap<Appointment_cstr>> props = {
+        // ID alanı (FT_INT olsa bile üye CString ise sorun çıkmaz)
+        { &Appointment_cstr::AppID,       _T("AppID"),       0,                  _T("ID"),           FT_INT,    0, false },
+
+        { &Appointment_cstr::CustomerID,  _T("CustomerID"),  IDC_APP_CUST_ID,    _T("Müşteri"),      FT_TEXT,   0, true },
+        { &Appointment_cstr::PropertyID,  _T("PropertyID"),  IDC_APP_PROP_ID,    _T("Emlak"),        FT_TEXT,   0, true },
+        { &Appointment_cstr::PropertyType,_T("PropertyType"),0,                  _T("Tip"),          FT_TEXT,   0, false },
+        { &Appointment_cstr::AppDate,     _T("AppDate"),     IDC_APP_DATE,       _T("Tarih"),        FT_DATE,   120, true },
+        { &Appointment_cstr::Title,       _T("Title"),       IDC_APP_TITLE,      _T("Başlık"),       FT_TEXT,   150, true },
+        { &Appointment_cstr::Description, _T("Description"), IDC_APP_DESC,       _T("Açıklama"),     FT_MEMO,   0, false },
+        { &Appointment_cstr::Location,    _T("Location"),    IDC_APP_LOCATION,   _T("Konum"),        FT_TEXT,   0, false },
+        { &Appointment_cstr::Status,      _T("Status"),      IDC_APP_STATUS,     _T("Durum"),        FT_TEXT,   80, true },
+        { &Appointment_cstr::GoogleEventID,_T("GoogleEventID"),0,                _T("G-Event"),      FT_TEXT,   0, false },
+
+        // Bool alanları FT_BOOL olarak işaretliyoruz ama struct'ta CString ("0"/"1") tutuyoruz
+        { &Appointment_cstr::IsNotified,  _T("IsNotified"),  0,                  _T("Bildirildi"),   FT_BOOL,   0, false },
+
+        // Sistem
+        { &Appointment_cstr::sync_id,     _T("sync_id"),     0,                  _T("Sync ID"),      FT_TEXT,   0, false },
+        { &Appointment_cstr::Updated_At,   _T("Updated_At"),   0,                  _T("Güncelleme"),   FT_TEXT,   0, false },
+        { &Appointment_cstr::Deleted,     _T("Deleted"),     0,                  _T("Silindi"),      FT_BOOL,   0, false },
+        { &Appointment_cstr::Attributes,  _T("Attributes"),  0,                  _T("Özellikler"),   FT_MEMO,   0, false }
+    };
+    return props;
+}
+inline void TRACEW(const wchar_t* fmt, ...)
+{
+    wchar_t buffer[1024];
+    va_list args;
+    va_start(args, fmt);
+    _vsnwprintf_s(buffer, _countof(buffer), _TRUNCATE, fmt, args);
+    va_end(args);
+    OutputDebugStringW(buffer);
+}
+
+// dataIsMe.cpp dosyasına ekleyin (veya AllGlobalHeader.h'a)
+
+//
+inline std::string DatabaseManager::WStringToUtf8(const CString& wstr)
+{
+    if (wstr.IsEmpty()) return {};
+
+    int sizeNeeded = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
+    std::string result(sizeNeeded, 0);
+    WideCharToMultiByte(CP_UTF8, 0, wstr, -1, &result[0], sizeNeeded, nullptr, nullptr);
+
+    // null terminatörü kaldır
+    if (!result.empty() && result.back() == '\0')
+        result.pop_back();
+
+    return result;
+}
+
+
+#include <fstream>
+#include <filesystem>
+
+
+inline void DatabaseManager::LogToFile(const CString& level, const CString& message)
+{
+    try
+    {
+        if (!std::filesystem::exists("logs")) std::filesystem::create_directory("logs");
+
+        SYSTEMTIME st; GetLocalTime(&st);
+        std::wofstream file(L"logs\\db.log", std::ios::app);
+        file.imbue(std::locale("", std::locale::ctype));
+        file << L"[" << st.wYear << L"-"
+            << std::setw(2) << std::setfill(L'0') << st.wMonth << L"-"
+            << std::setw(2) << std::setfill(L'0') << st.wDay << L" "
+            << std::setw(2) << std::setfill(L'0') << st.wHour << L":"
+            << std::setw(2) << std::setfill(L'0') << st.wMinute << L":"
+            << std::setw(2) << std::setfill(L'0') << st.wSecond << L"] "
+            << level.GetString() << L" " << message.GetString() << std::endl;
+    }
+    catch (...) { /* log yazılamazsa sessiz geç */ }
+}
+
+
+
+// -------------------------------------------------------------
+// Yukarıdaki helper fonksiyonlarını eklediğinizi varsayarak, 
+// GetCurrentIsoUtc() ve GenerateGuidString() fonksiyonları artık derlenebilir durumdadır.
+// -------------------------------------------------------------
+bool DatabaseManager::SoftDeleteGlobal(const CString& tableName, const CString& code)
+{
+    // ... (SoftDeleteGlobal'in içeriği, DeleteRecord'dan alınan eksiksiz versiyon ile doldurulur) ...
+    // ... (Bu kod, önceki yanıtta SoftDeleteGlobal'de verdiğimiz gibi, codeField'ı çözer,
+    // ... Updated_At'i atar, UPDATE sorgusunu çalıştırır ve m_pSync'e "DELETE" bildirimi gönderir.)
+
+    // Gerekli kod çözümlenmesi (DeleteRecord'dan alınmıştır)
+    CString codeField;
+    // (Aynı kod çözme mantığını buraya taşıyın)
+
+    // ... (Kalan kod)
+
+    return DatabaseManager::DeleteRecord(tableName, code); // Mevcut, tam versiyonu çağırabiliriz.
+}
+// ... (Diğer DatabaseManager metotları ve kodunuzun geri kalanı) ...
+
+
+// ISO UTC (TEXT için)
+CString DatabaseManager::GetCurrentIsoUtc2()
+{
+    SYSTEMTIME stUTC{};
+    GetSystemTime(&stUTC);
+    CString s;
+    s.Format(L"%04u-%02u-%02u %02u:%02u:%02u",
+        stUTC.wYear, stUTC.wMonth, stUTC.wDay, stUTC.wHour, stUTC.wMinute, stUTC.wSecond);
+    return s;
+}
+
+// GUID -> CString (SyncId için)
+CString DatabaseManager::GenerateSyncId()
+{
+    GUID g{};
+    if (SUCCEEDED(CoCreateGuid(&g))) {
+        OLECHAR* p = nullptr;
+        if (SUCCEEDED(StringFromCLSID(g, &p)) && p) {
+            CString out(p);
+            CoTaskMemFree(p);
+            return out;
+        }
+    }
+    // Fallback (çok düşük olasılık)
+    SYSTEMTIME st{}; GetSystemTime(&st);
+    CString out;
+    out.Format(L"{SYNC-%04u%02u%02u-%02u%02u%02u-%u}",
+        st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond, GetTickCount());
+    return out;
+}
+
+// Access DATETIME literal hazırla: boşsa Now(), doluysa #...#
+// Not: Access tarih literalinde # ... # zorunlu.
+CString DatabaseManager::AccessDateNowOrLiteral(const CString& maybeDate)
+{
+    if (maybeDate.IsEmpty())
+        return L"Now()";               // sütunun DEFAULT'uyla aynı davranır
+
+    // Girilen metni #...# ile sarmala (yyyy-mm-dd hh:nn:ss bekliyoruz)
+    CString s; s.Format(L"#%s#", (LPCWSTR)maybeDate);
+    return s;
+}
+
+
+
+
+
+
+
+
+// CString (UTF-16) → std::string (ANSI kod sayfası, varsayılan CP1254 Türkçe)
+// Bu fonksiyon dataIsMe.cpp'nin başında zaten var
+// inline std::string CStringToAnsi(...) 
+
+// 🚨 YENİ YARDIMCI FONKSİYON: GUID String Oluşturma
+// Bulut ve Yerelde Benzersiz Kimlik sağlar
+// 🚨 YARDIMCI FONKSİYON: GUID String Oluşturma
+// Bulut ve Yerelde Benzersiz Kimlik (sync_id) sağlar
+CString DatabaseManager::GenerateGuidString() const
+{
+    GUID guid;
+    if (CoCreateGuid(&guid) != S_OK)
+        return L"";
+
+    wchar_t guidStr[40] = { 0 };
+    StringFromGUID2(guid, guidStr, 40);
+
+    CString result = guidStr;
+    result.TrimLeft('{');
+    result.TrimRight('}');
+    return result;
+}
+
+// 🚨 YARDIMCI FONKSİYON: ISO 8601 UTC Zaman Damgası
+// Updated_At alanı için gereklidir (örneğin: 2025-11-02T18:57:00Z)
+// Not: std::string yerine CString döndürmek için uyarlanmıştır.
+CString DatabaseManager::GetCurrentIsoUtc() const 
+{
+    using namespace std::chrono;
+
+    // Sistem saatini al
+    auto now = system_clock::now();
+    auto t = system_clock::to_time_t(now);
+
+    std::tm tm{};
+
+    // 1. UTC zamanını güvenli C runtime fonksiyonu ile al
+    // gmtime_s (Windows güvenli versiyonu)
+    if (gmtime_s(&tm, &t) != 0)
+    {
+        // Hata durumunda boş string veya bir hata mesajı döndür
+        return L"";
+    }
+
+    // 2. Wide Stringstream (wstringstream) Kullanımı
+    // CString, temelde wchar_t (wide character) dizisidir. 
+    // wstringstream kullanmak, doğrudan CString ile uyumludur.
+    std::wstringstream wss;
+
+    // 3. ISO 8601 formatına dönüştür (L"..." ile wide string formatı kullanılarak)
+    // Örn: 2025-11-05T15:30:00Z
+    wss << std::put_time(&tm, L"%Y-%m-%dT%H:%M:%SZ");
+
+    // 4. std::wstring'i CString'e dönüştür
+    // CString sınıfı std::wstring'den (wss.str()) doğrudan yapılandırılabilir.
+    return CString(wss.str().c_str());
+}
+// ... Diğer DatabaseManager metotları ...
+
+
+
+
+bool DatabaseManager::EnsureSyncColumnsExists(const CString& tableName,
+    const CString& columnName,
+    const CString& columnType)
+{
+    if (!IsConnected())
+        return false;
+
+    try
+    {
+        // MS Access: Kolon zaten varsa hata verir → catch ile sessiz geçilir
+        CString sql;
+        sql.Format(L"ALTER TABLE [%s] ADD COLUMN %s %s",
+            (LPCTSTR)tableName, (LPCTSTR)columnName, (LPCTSTR)columnType);
+        ExecuteSQL(sql);
+    }
+    catch (const _com_error&)
+    {
+        // Kolon zaten mevcut → önemli değil
+    }
+    return true;
+}
+
+
+#include "SchemaManager.h" // Include etmeyi unutma
+
+
+
+
+// src/dataIsMe.cpp EN ALTINA EKLEYİN
+
+// 1. MAP -> UI (Veriyi Ekrana Basma)
+// src/dataIsMe.cpp içine (Mevcut Bind_Data_To_UI fonksiyonlarının yerine)
+
+// src/dataIsMe.cpp
+
+// -----------------------------------------------------------------------------
+// 1. MAP -> UI (Veriyi Ekrana Basma - DateTimePicker Destekli)
+// -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// UI -> MAP BAĞLAMA (ULTIMATE VERSION)
+// Hata toleransı yüksek, akıllı eşleştirme yapan profesyonel bağlayıcı.
+// -----------------------------------------------------------------------------
+void DatabaseManager::Bind_Data_To_UI(CWnd* pDlg, const CString& tableName, const std::map<CString, CString>& dataMap)
+{
+    // 1. Temel Güvenlik: Pencere kolu yoksa işlem yapma
+    if (!pDlg || !pDlg->GetHwnd()) return;
+
+    // Şemayı yükle
+    const auto& schema = SchemaManager::Get().GetSchema(tableName);
+
+    for (const auto& field : schema)
+    {
+        // Arayüzde karşılığı olmayan (arka plan) alanları atla
+        if (field.resID == 0) continue;
+
+        // Veri haritasında bu alan var mı?
+        auto it = dataMap.find(field.dbName);
+
+        // Bulunamazsa alias anahtarlarını dene
+        if (it == dataMap.end()) {
+            for (const auto& a : field.aliases) {
+                auto ia = dataMap.find(a);
+                if (ia != dataMap.end()) { it = ia; break; }
+            }
+        }
+
+        if (it == dataMap.end()) continue;
+
+        // Veriyi al ve gereksiz boşlukları temizle
+        CString val = it->second;
+        val.Trim();
+
+        // Kontrolün (Edit, Combo vb.) handle'ını al
+        HWND hCtrl = pDlg->GetDlgItem(field.resID);
+        if (!hCtrl) {
+            // Loglama mekanizmanız varsa buraya "ID Bulunamadı" logu düşülebilir.
+            continue;
+        }
+
+        // Kontrolün sınıf adını öğren (ComboBox mı, Edit mi, Button mı?)
+        TCHAR szClass[64];
+        if (!::GetClassName(hCtrl, szClass, _countof(szClass))) continue;
+        CString className = szClass;
+
+        // =========================================================
+        // 1. TARİH ALANLARI (SysDateTimePick32)
+        // =========================================================
+        if (field.type == FT_DATE || className.Find(_T("SysDateTimePick32")) != -1)
+        {
+            SYSTEMTIME st = { 0 };
+            bool validDate = false;
+
+            // Format 1: YYYY-MM-DD HH:MM (Standart SQL)
+            int year = 0, month = 0, day = 0, hour = 0, minute = 0;
+            if (!val.IsEmpty())
+            {
+                if (_stscanf_s(val, _T("%d-%d-%d %d:%d"), &year, &month, &day, &hour, &minute) >= 3) {
+                    st.wYear = (WORD)year; st.wMonth = (WORD)month; st.wDay = (WORD)day;
+                    st.wHour = (WORD)hour; st.wMinute = (WORD)minute;
+                    validDate = true;
+                }
+            }
+
+            // Tarih geçerliyse ayarla, değilse "Seçilmemiş" (GDT_NONE) yap
+            if (validDate)
+                ::SendMessage(hCtrl, DTM_SETSYSTEMTIME, GDT_VALID, (LPARAM)&st);
+            else
+                ::SendMessage(hCtrl, DTM_SETSYSTEMTIME, GDT_NONE, 0); // Kutuyu boşalt/unchecked yap
+        }
+
+        // =========================================================
+        // 2. COMBOBOX ALANLARI
+        // =========================================================
+        else if (className.Find(_T("Combo")) != -1)
+        {
+            // A) Önce veriyi olduğu gibi listede ara (Tam Eşleşme)
+            LRESULT idx = ::SendMessage(hCtrl, CB_FINDSTRINGEXACT, -1, (LPARAM)(LPCTSTR)val);
+
+            // B) Bulamazsan "Akıllı Eşanlamlı" kontrolü yap
+            if (idx == CB_ERR)
+            {
+                CString altVal = val;
+                // Veritabanı "Evet" diyor ama listede "Var" olabilir
+                if (val.CompareNoCase(_T("Evet")) == 0) altVal = _T("Var");
+                else if (val.CompareNoCase(_T("Var")) == 0) altVal = _T("Evet");
+                else if (val.CompareNoCase(_T("Hayır")) == 0) altVal = _T("Yok");
+                else if (val.CompareNoCase(_T("Yok")) == 0) altVal = _T("Hayır");
+
+                if (altVal != val) // Değişiklik yaptıysak tekrar ara
+                    idx = ::SendMessage(hCtrl, CB_FINDSTRINGEXACT, -1, (LPARAM)(LPCTSTR)altVal);
+            }
+
+            // C) Eğer listede bulduysak SEÇ
+            if (idx != CB_ERR) {
+                ::SendMessage(hCtrl, CB_SETCURSEL, idx, 0);
+            }
+            // D) Listede yoksa ama Combo yazılabilir (DropDown) ise METNİ YAZ
+            else {
+                // Style kontrolü: Sadece okunur (DropDownList) değilse yaz
+                LONG_PTR style = ::GetWindowLongPtr(hCtrl, GWL_STYLE);
+                if ((style & CBS_DROPDOWNLIST) != CBS_DROPDOWNLIST) {
+                    ::SetWindowText(hCtrl, val);
+                }
+                // Listede yok ve sadece okunursa, yapacak bir şey yok (veya ilk elemanı seç)
+            }
+        }
+
+        // =========================================================
+        // 3. CHECKBOX / RADIO BUTTON
+        // =========================================================
+        else if (field.type == FT_BOOL || className.Find(_T("Button")) != -1)
+        {
+            // Genişletilmiş "Doğru" algısı
+            bool isChecked = (val == _T("1") ||
+                val.CompareNoCase(_T("True")) == 0 ||
+                val.CompareNoCase(_T("Evet")) == 0 ||
+                val.CompareNoCase(_T("Var")) == 0);
+
+            ::SendMessage(hCtrl, BM_SETCHECK, isChecked ? BST_CHECKED : BST_UNCHECKED, 0);
+        }
+
+        // =========================================================
+        // 4. STANDART METİN KUTULARI (Edit Control)
+        // =========================================================
+        else
+        {
+            // Sayısal alanlarda "0" yerine boş görünmesini istiyorsanız buraya if ekleyebilirsiniz.
+            // Şu an veritabanındaki veriyi birebir yazar.
+            ::SetWindowText(hCtrl, val);
+        }
+    }
+}
+// -----------------------------------------------------------------------------
+// 2. UI -> MAP (Ekrandan Veri Okuma - DateTimePicker Destekli)
+// -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// UI -> MAP BAĞLAMA (PROFESYONEL SÜRÜM)
+// Form üzerindeki kontrolleri tarar ve veritabanı şemasına göre haritaya (map) doldurur.
+// -----------------------------------------------------------------------------
+void DatabaseManager::Bind_UI_To_Data(CWnd* pDlg, const CString& tableName, std::map<CString, CString>& outDataMap)
+{
+    // 1. Temel Güvenlik Kontrolleri
+    if (!pDlg || !pDlg->GetHwnd()) return;
+
+    // Şemayı yükle
+    const auto& schema = SchemaManager::Get().GetSchema(tableName);
+
+    for (const auto& field : schema)
+    {
+        // UI karşılığı olmayan (arka plan) alanları atla
+        if (field.resID == 0) continue;
+
+        // Kontrolün handle'ını al
+        HWND hCtrl = pDlg->GetDlgItem(field.resID);
+        if (!hCtrl) continue; // Kontrol bulunamazsa bu alanı atla
+
+        CString val = _T("");
+
+        // ---------------------------------------------------------
+        // A) TARİH ALANLARI (DateTimePicker)
+        // ---------------------------------------------------------
+        if (field.type == FT_DATE)
+        {
+            SYSTEMTIME st = { 0 };
+            // DateTimePicker'dan sistem zamanını iste (GDT_VALID: Başarılı, GDT_NONE: Checkbox seçili değil)
+            if (::SendMessage(hCtrl, DTM_GETSYSTEMTIME, 0, (LPARAM)&st) == GDT_VALID)
+            {
+                // Veritabanı ile uyumlu standart format: YYYY-MM-DD HH:MM
+                val.Format(_T("%04d-%02d-%02d %02d:%02d"), st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute);
+            }
+        }
+        else
+        {
+            // Kontrol sınıfını öğren (Edit, ComboBox, Button vb.)
+            TCHAR szClass[64];
+            if (!::GetClassName(hCtrl, szClass, _countof(szClass)))
+                continue;
+
+            CString className = szClass;
+
+            // ---------------------------------------------------------
+            // B) COMBOBOX (Açılır Liste)
+            // ---------------------------------------------------------
+            if (className.Find(_T("Combo")) != -1)
+            {
+                // 1. Seçili öğenin indeksini al
+                int sel = (int)::SendMessage(hCtrl, CB_GETCURSEL, 0, 0);
+
+                if (sel != CB_ERR)
+                {
+                    // Listeden seçilmişse, listedeki metni çek (En güvenilir yöntem)
+                    int len = (int)::SendMessage(hCtrl, CB_GETLBTEXTLEN, sel, 0);
+                    if (len > 0)
+                    {
+                        std::vector<TCHAR> buf(len + 1);
+                        ::SendMessage(hCtrl, CB_GETLBTEXT, sel, (LPARAM)buf.data());
+                        val = buf.data();
+                    }
+                }
+                else
+                {
+                    // 2. Seçim yoksa (veya DropDown style ise), edit kısmındaki metni al
+                    int len = ::GetWindowTextLength(hCtrl);
+                    if (len > 0)
+                    {
+                        std::vector<TCHAR> buf(len + 1);
+                        ::GetWindowText(hCtrl, buf.data(), len + 1);
+                        val = buf.data();
+                    }
+                }
+            }
+            // ---------------------------------------------------------
+            // C) CHECKBOX / RADIO BUTTON
+            // ---------------------------------------------------------
+            else if (field.type == FT_BOOL || className.Find(_T("Button")) != -1)
+            {
+                // İşaretli ise "1", değilse "0"
+                bool isChecked = (::SendMessage(hCtrl, BM_GETCHECK, 0, 0) == BST_CHECKED);
+                val = isChecked ? _T("1") : _T("0");
+            }
+            // ---------------------------------------------------------
+            // D) STANDART METİN KUTULARI (Edit Control ve Diğerleri)
+            // ---------------------------------------------------------
+            else
+            {
+                int len = ::GetWindowTextLength(hCtrl);
+                if (len > 0)
+                {
+                    std::vector<TCHAR> buf(len + 1);
+                    ::GetWindowText(hCtrl, buf.data(), len + 1);
+                    val = buf.data();
+                }
+            }
+        }
+
+        // 3. Son İşlemler
+        val.Trim(); // Baş ve sondaki gereksiz boşlukları temizle
+        outDataMap[field.dbName] = val;
+    }
+}
+
+
+
+std::string DatabaseManager::CStringToAnsi(const CString& str, UINT codePage)
+{
+    if (str.IsEmpty()) return "";
+    int len = ::WideCharToMultiByte(codePage, 0, str, -1, nullptr, 0, nullptr, nullptr);
+    if (len <= 0) return "";
+    std::string result(len - 1, '\0');
+    ::WideCharToMultiByte(codePage, 0, str, -1, &result[0], len, nullptr, nullptr);
+    return result;
+}
+
+CString DatabaseManager::AnsiToCString(const std::string& str, UINT codePage)
+{
+    if (str.empty()) return _T("");
+    int len = ::MultiByteToWideChar(codePage, 0, str.c_str(), -1, nullptr, 0);
+    if (len <= 0) return _T("");
+    CString result;
+    ::MultiByteToWideChar(codePage, 0, str.c_str(), -1, result.GetBuffer(len), len);
+    result.ReleaseBuffer();
+    return result;
+}
+
+CString FixEncoding(const CString& input)
+{
+    if (input.IsEmpty())
+        return input;
+
+    // 1. Giriş metnini UTF-16'dan UTF-8'e (yanlış dönüştürülmüş haliyle) çevir
+    int utf8len = WideCharToMultiByte(CP_UTF8, 0, input, -1, nullptr, 0, nullptr, nullptr);
+    std::string utf8str(utf8len, 0);
+    WideCharToMultiByte(CP_UTF8, 0, input, -1, &utf8str[0], utf8len, nullptr, nullptr);
+
+    // 2. Şimdi bu UTF-8 dizisini Türkçe kod sayfasına göre yorumla (1254)
+    int wlen = MultiByteToWideChar(1254, 0, utf8str.c_str(), -1, nullptr, 0);
+    CString fixed;
+    MultiByteToWideChar(1254, 0, utf8str.c_str(), -1, fixed.GetBuffer(wlen), wlen);
+    fixed.ReleaseBuffer();
+
+    return fixed;
+}
+// Tekil nesne
+DatabaseManager& DatabaseManager::GetInstance()
+{
+    static DatabaseManager instance;
+    return instance;
+}
+
+// SyncBridge eşlemesi
+void DatabaseManager::SetSyncInterface(SyncBridge* bridge)
+{
+    m_syncBridge = bridge;
+    TRACE(L"[DB] SyncBridge atandı.\n");
+}
+
+void DatabaseManager::RepairHomeTableEncoding()
+{
+    try
+    {
+        EnsureConnection();
+
+        _RecordsetPtr rs;
+        rs.CreateInstance(__uuidof(Recordset));
+        rs->Open(_bstr_t("SELECT * FROM [HomeTbl];"),
+            _variant_t((IDispatch*)IConnectionPtr, true),
+            adOpenDynamic, adLockOptimistic, adCmdText);
+
+        while (!rs->EndOfFile)
+        {
+            for (long i = 0; i < rs->Fields->Count; ++i)
+            {
+                _bstr_t fieldName = rs->Fields->Item[i]->Name;
+                _variant_t val = rs->Fields->Item[i]->Value;
+
+                if (val.vt == VT_BSTR && val.bstrVal != nullptr)
+                {
+                    CString orig = (LPCTSTR)_bstr_t(val);
+                    CString fixed = FixEncoding(orig);
+
+                    if (fixed != orig)
+                    {
+                        rs->Fields->Item[i]->Value = _variant_t(_bstr_t(fixed));
+                    }
+                }
+            }
+            rs->Update();
+            rs->MoveNext();
+        }
+
+        rs->Close();
+        ::MessageBox(nullptr, _T("Home tablosundaki veriler düzeltildi."), _T("Başarılı"), MB_OK | MB_ICONINFORMATION);
+    }
+    catch (const _com_error& e)
+    {
+        ::MessageBox(nullptr, e.ErrorMessage(), _T("RepairHomeTableEncoding Hatası"), MB_ICONERROR);
+    }
+}
+
+
+
+
+
+
+
+
+// --- YARDIMCI METOTLAR (SQL'ler aynı kalır) ---
+
+// Bağlantı dizesini döndürür
+CString DatabaseManager::GetConnectionString() const
+{
+    return _T("Provider=Microsoft.ACE.OLEDB.16.0;Data Source = D:\\RealEstate.mdb");
+}
+
+// Tablo Oluşturma SQL'leri (Önceki kodunuzdan gelen bu kısım aynı kalabilir)
+
+// CString'ler için Access DB'de VARCHAR(255) veya TEXT kullanılır.
+// dataIsMe.cpp
+
+// src/dataIsMe.cpp içine (Eskisinin yerine)
+
+// =============================================================
+//  TABLO YÖNETİMİ (Dinamik SQL Oluşturma)
+// =============================================================
+
+// Artık şemayı SchemaManager'dan alıp SQL'i burada üretiyoruz
+// SQL Oluşturma (SchemaManager'dan)
+CString DatabaseManager::GetCreateTableSQL(const CString& tableName) const {
+    const auto& schema = SchemaManager::Get().GetSchema(tableName);
+    if (schema.empty()) return _T("");
+
+    CString sql;
+    sql.Format(_T("CREATE TABLE [%s] ("), tableName.c_str());
+
+    bool first = true;
+    for (const auto& field : schema) {
+        if (field.isAttribute) continue;
+        if (!first) sql += _T(", ");
+        first = false;
+
+        sql += _T("[") + field.dbName + _T("] ");
+
+        if (field.dbName.CompareNoCase(_T("sync_id")) == 0) sql += _T("TEXT(50)");
+        else if (field.dbName.CompareNoCase(_T("Deleted")) == 0) sql += _T("YESNO DEFAULT 0");
+        else if (field.dbName.CompareNoCase(_T("Updated_At")) == 0) sql += _T("TEXT(50)");
+        else if (field.dbName.CompareNoCase(_T("OfferID")) == 0) sql += _T("AUTOINCREMENT PRIMARY KEY");
+        // 🔥 YENİ EKLENEN KISIM BAŞLANGICI
+        else if (tableName.CompareNoCase(_T("CompanyInfo")) == 0 && field.dbName.CompareNoCase(_T("ID")) == 0) {
+            // ID alanını Primary Key yapıyoruz (AutoIncrement olmasına gerek yoksa TEXT PRIMARY KEY de olabilir, ama genelde sayısal ID için Long kullanılır)
+            sql += _T("LONG PRIMARY KEY");
+        }
+        // 🔥 YENİ EKLENEN KISIM BİTİŞİ
+        // 🚨 KRİTİK DÜZELTME: Sadece 'Customer' tablosunda 'Cari_Kod' anahtardır.
+        // Diğerlerinde (Home, Land) Cari_Kod bir Foreign Key'dir, Primary Key değildir!
+        else if (tableName.CompareNoCase(TABLE_NAME_CUSTOMER) == 0 && field.dbName.CompareNoCase(_T("Cari_Kod")) == 0) {
+            sql += _T("TEXT(50) PRIMARY KEY");
+        }
+        else if (field.dbName.Right(5).CompareNoCase(_T("_Code")) == 0) {
+            sql += _T("TEXT(50) PRIMARY KEY");
+        }
+        else sql += SqlTypeFromFieldType(field.type);
+    }
+    sql += _T(");");
+    return sql;
+}
+
+
+DatabaseManager::DatabaseManager()
+{
+    // COM başlatma
+    CoInitialize(NULL);
+
+    // Bağlantı nesnelerini oluştur
+    IConnectionPtr.CreateInstance(__uuidof(Connection));
+    IRecordsetPtr.CreateInstance(__uuidof(Recordset));
+
+    // Tablo tanımlarını hazırla
+    InitTableDefinitions();
+
+    TRACE(L"[DB] DatabaseManager oluşturuldu.\n");
+}
+// dataIsMe.cpp
+
+void DatabaseManager::InitTableDefinitions()
+{
+    // Sadece tablo isimlerini listelemek yeterli, SQL'ler talep anında oluşturulacak.
+    // Ancak performans için map'i önceden doldurmak istiyorsanız:
+
+    m_tableDefinitions.clear();
+
+    // Global sabit diziden veya vektörden tüm tablo adlarını çek
+    // (dataIsMe.h içinde ALL_TABLE_NAMES tanımlıydı)
+
+    for (int i = 0; i < NUM_TABLES; ++i) {
+        CString tableName = ALL_TABLE_NAMES[i];
+        m_tableDefinitions[tableName] = GetCreateTableSQL(tableName);
+
+        // Debug için loglayalım, oluşan SQL'i görelim
+        // TRACE(L"[Schema] %s SQL: %s\n", tableName.GetString(), m_tableDefinitions[tableName].GetString());
+    }
+
+    // Offers tablosu ayrı bir yerde tanımlı olabilir, onu da ekleyelim
+    m_tableDefinitions[TABLE_NAME_OFFERS] = GetCreateTableSQL(TABLE_NAME_OFFERS);
+}
+DatabaseManager::~DatabaseManager()
+{
+    try
+    {
+        // 1️⃣ Kayıt setini kapat
+        if (IRecordsetPtr != nullptr && IRecordsetPtr->State == adStateOpen)
+        {
+            IRecordsetPtr->Close();
+        }
+        IRecordsetPtr = nullptr;
+
+        // 2️⃣ Bağlantıyı kapat
+        if (IConnectionPtr != nullptr && IConnectionPtr->State == adStateOpen)
+        {
+            IConnectionPtr->Close();
+        }
+        IConnectionPtr = nullptr;
+
+        // 3️⃣ COM’u yalnızca gerçekten başlatılmışsa kapat
+        CoUninitialize();
+    }
+    catch (...)
+    {
+        TRACE(_T("Uyarı: DatabaseManager::~DatabaseManager() içinde hata yakalandı.\n"));
+    }
+}
+
+
+void DatabaseManager::CloseConnection()
+{
+    if (IConnectionPtr != NULL && IConnectionPtr->State == adStateOpen)
+    {
+        IConnectionPtr->Close();
+        IConnectionPtr = NULL;
+    }
+}
+
+// dataIsMe.cpp - DatabaseManager::ExecuteSQL
+
+bool DatabaseManager::ExecuteSQL(const CString& sql)
+{
+    if (!IsConnected())
+    {
+        TRACE(L"[DB] Bağlantı yok, SQL çalıştırılamıyor.\n");
+        return false;
+    }
+
+    try
+    {
+        // 🔹 ADO doğrudan BSTR ister, CString zaten UTF-16’dır.
+        _bstr_t bstrSQL(sql);
+        IConnectionPtr->Execute(bstrSQL, NULL, adExecuteNoRecords);
+
+        // 🔹 Başarılı log (Unicode)
+        CString msg;
+        msg.Format(L"[DB][OK] SQL başarıyla yürütüldü:\n%s\n", sql.GetString());
+        OutputDebugStringW(msg);
+
+        return true;
+    }
+    catch (const _com_error& e)
+    {
+        // 🔹 COM hata mesajlarını güvenli bir şekilde al
+        CString src = (LPCWSTR)e.Source();
+        CString desc = (LPCWSTR)e.Description();
+
+        // Access'te tablo zaten varsa CREATE TABLE hata fırlatır.
+        // Bu durum uygulama açılışında migration senaryolarında normaldir.
+        // Bu hatayı "başarılı" sayıp devam edelim.
+        CString descLower = desc;
+        descLower.MakeLower();
+        if (descLower.Find(L"zaten var") >= 0 || descLower.Find(L"already exists") >= 0)
+        {
+            CString msg;
+            msg.Format(L"[DB][SKIP] Zaten var: %s\nSQL:\n%s\n", desc.GetString(), sql.GetString());
+            OutputDebugStringW(msg);
+            return true;
+        }
+
+        // 🔹 Hata logu (Unicode)
+        CString msg;
+        msg.Format(L"[DB][HATA] ExecuteSQL başarısız!\nKaynak: %s\nAçıklama: %s\nSQL:\n%s\n",
+            src.GetString(), desc.GetString(), sql.GetString());
+
+        OutputDebugStringW(msg); // ❗ Burası sorun değil
+        TRACE(L"%s\n", msg.GetString());
+
+        return false;
+    }
+}
+
+// Diğer gerekli Win32++ başlıkları...
+
+
+
+// src/dataIsMe.cpp içine yapıştır (Eskisinin yerine)
+
+// src/dataIsMe.cpp içine (Eskisinin yerine)
+
+// Migration (Eksik Kolon Ekleme)
+// Migration (Eksik Kolon Ekleme)
+// Migration (Eksik Kolon Ekleme)
+void DatabaseManager::CheckAndMigrateTables() {
+    SchemaManager::Get().GetSchema(_T("Dummy"));
+
+    const std::vector<CString> tables = {
+            TABLE_NAME_CUSTOMER, TABLE_NAME_HOME, TABLE_NAME_LAND,
+            TABLE_NAME_FIELD, TABLE_NAME_VINEYARD, TABLE_NAME_VILLA,
+            TABLE_NAME_COMMERCIAL,TABLE_NAME_CAR, TABLE_NAME_OFFERS,
+            TABLE_NAME_APPOINTMENT,TABLE_NAME_SETTINGS // <--- BURAYA EKLE (Virgüle dikkat)
+    };
+    if (!EnsureConnection()) return;
+
+    for (const auto& tableName : tables)
+    {
+        if (!TableExists(tableName)) continue;
+
+        std::set<CString> existingCols;
+        try {
+            _RecordsetPtr rs;
+            rs.CreateInstance(__uuidof(Recordset));
+            CString q; q.Format(_T("SELECT TOP 1 * FROM [%s]"), tableName.c_str());
+            rs->Open((_variant_t)q, _variant_t((IDispatch*)IConnectionPtr, true), adOpenStatic, adLockReadOnly, adCmdText);
+            for (long i = 0; i < rs->Fields->Count; i++) existingCols.insert((LPCTSTR)(_bstr_t)rs->Fields->Item[i]->Name);
+            rs->Close();
+        }
+        catch (...) { continue; }
+
+        const auto& schema = SchemaManager::Get().GetSchema(tableName);
+        for (const auto& field : schema)
+        {
+            if (existingCols.count(field.dbName)) continue;
+            if (field.isAttribute) {
+                if (field.dbName == _T("Attributes") && existingCols.find(_T("Attributes")) == existingCols.end()) {
+                    ExecuteSQL(_T("ALTER TABLE [") + tableName + _T("] ADD COLUMN [Attributes] MEMO"));
+                }
+                continue;
+            }
+
+            CString colType;
+            if (field.dbName.CompareNoCase(_T("sync_id")) == 0) colType = _T("TEXT(50)");
+            else if (field.dbName.CompareNoCase(_T("Updated_At")) == 0) colType = _T("TEXT(50)");
+            else if (field.dbName.CompareNoCase(_T("Deleted")) == 0) colType = _T("YESNO");
+            else colType = SqlTypeFromFieldType(field.type);
+
+            try {
+                CString sql;
+                sql.Format(_T("ALTER TABLE [%s] ADD COLUMN [%s] %s"), tableName.c_str(), field.dbName.c_str(), colType.c_str());
+                ExecuteSQL(sql);
+            }
+            catch (...) {}
+        }
+    }
+}
+std::map<CString, CString> DatabaseManager::FetchRecordMap(const CString& tableName, const CString& codeField, const CString& codeValue)
+{
+    std::map<CString, CString> result;
+    std::vector<std::pair<CString, CString>> vecFields;
+
+    // Mevcut fonksiyonu kullan (Kod tekrarı olmasın)
+    if (FetchRecordFields(tableName, codeField, codeValue, vecFields))
+    {
+        for (const auto& p : vecFields) {
+            result[p.first] = p.second;
+
+            // Eğer bu Attributes kolonu ise, içini parçala ve haritaya ekle
+            if (p.first.CompareNoCase(_T("Attributes")) == 0 && !p.second.IsEmpty())
+            {
+                try {
+                    auto j = nlohmann::json::parse(CStringToAnsi(p.second));
+                    for (auto& el : j.items()) {
+                        CString jKey = AnsiToCString(el.key());
+                        CString jVal;
+                        if (el.value().is_string()) jVal = AnsiToCString(el.value().get<std::string>());
+                        else jVal = AnsiToCString(el.value().dump());
+
+                        result[jKey] = jVal; // Sanal alanları ekle
+                    }
+                }
+                catch (...) {}
+            }
+        }
+    }
+    return result;
+}
+
+
+/* Duran YALÇIN 17/01/2026
+Fonksiyon Adı.:   DatabaseManager::FetchRecordsMapsByCariKod
+Açıklama :        Tek sorgu ile (Cari_Kod filtresiyle) tüm kayıtları alan bazlı map olarak döndürür.
+                 TreeListView doldurma gibi senaryolarda N+1 sorgu problemini engeller.
+
+*/
+std::vector<std::map<CString, CString>> DatabaseManager::FetchRecordsMapsByCariKod(const CString& tableName, const CString& cariKod)
+{
+    std::vector<std::map<CString, CString>> out;
+
+    if (!IsConnected())
+    {
+        InitializeDatabase();
+        if (!IsConnected()) return out;
+    }
+
+    CString escapedCariKod = EscapeSQLString(cariKod);
+
+    CString sql;
+    sql.Format(_T("SELECT * FROM [%s] WHERE [Cari_Kod] = '%s' AND Deleted = FALSE"),
+        tableName.GetString(), escapedCariKod.GetString());
+
+    _RecordsetPtr rs;
+    rs.CreateInstance(__uuidof(Recordset));
+
+    try
+    {
+        rs->Open((_variant_t)sql,
+            _variant_t((IDispatch*)IConnectionPtr, true),
+            adOpenStatic, adLockReadOnly, adCmdText);
+
+        const long fieldCount = rs->Fields->Count;
+
+        while (!rs->EndOfFile)
+        {
+            std::map<CString, CString> row;
+            for (long i = 0; i < fieldCount; ++i)
+            {
+                _bstr_t name = rs->Fields->GetItem(i)->Name;
+                _variant_t val = rs->Fields->GetItem(i)->Value;
+
+                CString fieldName = (LPCWSTR)name;
+                CString value = VariantToCString(val);
+                row[fieldName] = value;
+            }
+            out.push_back(std::move(row));
+            rs->MoveNext();
+        }
+        if (rs) rs->Close();
+    }
+    catch (const _com_error& e)
+    {
+        TRACE(L"HATA: FetchRecordsMapsByCariKod (%s) - ADO Hatası: %s\n",
+            tableName.GetString(), (LPCWSTR)e.Description());
+    }
+
+    return out;
+}
+
+
+
+
+
+
+
+
+
+
+// 🚀 GÜVENLİ VE HATA GÖSTEREN TABLE CREATE 🚀
+bool DatabaseManager::CheckAndCreateTables() {
+    if (!IsConnected()) return false;
+
+    // Şemayı yükle
+    SchemaManager::Get().GetSchema(_T("Dummy"));
+
+    const std::vector<CString> tables = {
+            TABLE_NAME_CUSTOMER, 
+            TABLE_NAME_HOME, 
+            TABLE_NAME_LAND,
+            TABLE_NAME_FIELD, 
+            TABLE_NAME_VINEYARD, 
+            TABLE_NAME_VILLA,
+            TABLE_NAME_COMMERCIAL,
+            TABLE_NAME_CAR,
+            TABLE_NAME_OFFERS,
+            TABLE_NAME_APPOINTMENT,
+            TABLE_NAME_SETTINGS // <--- BURAYA EKLE (Virgüle dikkat)
+    };
+
+    bool allSuccess = true;
+
+    for (const auto& table : tables) {
+        try {
+            if (!TableExists(table)) {
+                CString sql = GetCreateTableSQL(table);
+                if (!sql.IsEmpty()) {
+                    ExecuteSQL(sql);
+                }
+                else {
+                    CString msg; msg.Format(L"[DB ERROR] %s için Şema bulunamadı!", table.c_str());
+                    LogToFile(L"[ERROR]", msg);
+                    ::MessageBox(NULL, msg, L"Şema Hatası", MB_ICONERROR);
+                }
+            }
+        }
+        catch (const _com_error& e) {
+            // HATAYI EKRANA BAS
+            CString msg; msg.Format(L"%s tablosu oluşturulamadı!\nHata: %s", table.c_str(), (LPCWSTR)e.Description());
+            LogToFile(L"[ERROR]", msg);
+            ::MessageBox(NULL, msg, L"Veritabanı Hatası", MB_ICONERROR);
+            allSuccess = false;
+        }
+    }
+    return allSuccess;
+}
+
+
+// DatabaseManager.cpp içine
+
+bool DatabaseManager::SaveCompanyInfo(const CompanyInfo_cstr& info)
+{
+    // 1. Kayıt var mı diye bak (ID=1)
+    CompanyInfo_cstr existing = GetRecordByCode<CompanyInfo_cstr>(_T("1"));
+
+    CompanyInfo_cstr temp = info;
+    temp.ID = _T("1"); // ID'yi zorla 1 yapıyoruz
+
+    if (existing.ID.IsEmpty())
+    {
+        // Kayıt yoksa INSERT (ID Access'te Counter olduğu için manuel verilmez ama 
+        // tek kayıt olduğu için ilk insert ID=1 olacaktır)
+        return InsertGlobal(temp);
+    }
+    else
+    {
+        // Kayıt varsa UPDATE
+        return UpdateGlobal(temp);
+    }
+}
+
+CompanyInfo_cstr DatabaseManager::GetCompanyInfo()
+{
+    // ID'si 1 olan kaydı çek
+    return GetRecordByCode<CompanyInfo_cstr>(_T("1"));
+}
+
+
+
+
+
+
+
+
+
+bool DatabaseManager::TableExists(const CString& tableName)
+{
+    try
+    {
+        if (!IConnectionPtr || IConnectionPtr->State != adStateOpen)
+            return false;
+
+        _RecordsetPtr rs;
+        rs.CreateInstance(__uuidof(Recordset));
+
+        CString sql;
+        sql.Format(L"SELECT * FROM MSysObjects WHERE Name='%s' AND Type=1", (LPCWSTR)tableName);
+        rs->Open((_variant_t)sql, _variant_t((IDispatch*)IConnectionPtr, true),
+            adOpenForwardOnly, adLockReadOnly, adCmdText);
+
+        bool exists = (rs->GetRecordCount() > 0);
+        rs->Close();
+        return exists;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+bool DatabaseManager::InitializeDatabase() {
+    CString dbPath = _T("D:\\RealEstate.mdb");
+    if (_access(DatabaseManager::CStringToAnsi(dbPath).c_str(), 0) == -1) {
+        if (!CreateDatabaseFile()) return false;
+    }
+    if (!EnsureConnection()) return false;
+    CheckAndCreateTables();
+    CheckAndMigrateTables();
+    return true;
+}
+
+
+void DatabaseManager::EnsureAttributesColumn() {
+    const std::vector<CString> tables = { _T("HomeTbl"), _T("Land"), _T("Field"), _T("Villa"), _T("Vineyard"), _T("Commercial"), _T("Customer"), _T("Offers") };
+    for (const auto& t : tables) {
+        try {
+            CString sql; sql.Format(_T("ALTER TABLE [%s] ADD COLUMN [Attributes] MEMO"), t.GetString());
+            IConnectionPtr->Execute((_bstr_t)sql, NULL, adExecuteNoRecords);
+        }
+        catch (...) {}
+    }
+}
+
+bool DatabaseManager::CreateDatabaseFile() const
+{
+    ADOX::_CatalogPtr pCatalog = NULL;
+    HRESULT hr = pCatalog.CreateInstance(__uuidof(ADOX::Catalog));
+
+    if (FAILED(hr))
+    {
+        ::MessageBox(NULL, _T("ADOX Catalog nesnesi başlatılamadı. MDAC/ADO yüklü mü?"), _T("Hata"), MB_ICONERROR);
+        return false;
+    }
+
+    CString strConnection = GetConnectionString();
+
+    try
+    {
+        // ADOX ile MDB dosyasını oluştur
+        pCatalog->Create((_bstr_t)strConnection);
+        TRACE(_T("Başarılı: Yeni veritabanı dosyası oluşturuldu.\n"));
+        return true;
+    }
+    catch (_com_error& e)
+    {
+        // HATA DETAYI
+        CString err;
+        err.Format(_T("Veritabanı Oluşturma Hatası!\n\nKaynak: %s\nTanım: %s\n\nKullanılan String: %s"),
+            (LPCTSTR)e.Source(), (LPCTSTR)e.Description(), strConnection.c_str());
+
+        ::MessageBox(NULL, err, _T("ADOX Hatası"), MB_ICONERROR);
+        return false;
+    }
+}
+
+
+
+
+
+
+// DatabaseManager.cpp
+#include <comdef.h>
+#include <ctime>
+
+
+// 🔹 GUID üretici
+inline CStringA GenerateGUID()
+{
+    GUID guid;
+    CoCreateGuid(&guid);
+    char buffer[64];
+    sprintf_s(buffer, sizeof(buffer),
+        "%08lX%04hX%04hX%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX",
+        guid.Data1, guid.Data2, guid.Data3,
+        guid.Data4[0], guid.Data4[1], guid.Data4[2], guid.Data4[3],
+        guid.Data4[4], guid.Data4[5], guid.Data4[6], guid.Data4[7]);
+    return CStringA(buffer);
+}
+
+// 🔹 ISO8601 UTC zaman damgası üretici
+inline CStringA IsoNowUtc()
+{
+    SYSTEMTIME stUTC;
+    GetSystemTime(&stUTC);
+    CStringA s;
+    s.Format("%04d-%02d-%02dT%02d:%02d:%02dZ",
+        stUTC.wYear, stUTC.wMonth, stUTC.wDay,
+        stUTC.wHour, stUTC.wMinute, stUTC.wSecond);
+    return s;
+}
+
+// dataIsMe.cpp - DatabaseManager::InsertCustomer (KESİN VE EKSİKSİZ VERSİYON)
+
+
+
+
+
+CString DatabaseManager::EscapeSQLString(const CString& str) const
+{
+    // Access/Jet DB'de tek tırnak (' ) çift tırnakla ('' ) değiştirilmelidir.
+    CString escapedStr = str;
+    escapedStr.Replace(_T("'"), _T("''"));
+    return escapedStr;
+}
+
+bool DatabaseManager::InsertCustomerBatch(const std::vector<Customer_cstr>& customers)
+{
+    if (!EnsureConnection())
+        return false;
+
+    ExecuteSQL(_T("BEGIN TRANSACTION"));
+
+    bool allSuccess = true;
+    for (const auto& c : customers)
+    {
+        if (!InsertGlobal(c))
+            allSuccess = false;
+    }
+
+    ExecuteSQL(allSuccess ? _T("COMMIT") : _T("ROLLBACK"));
+    return allSuccess;
+}
+bool DatabaseManager::UpdateCustomerField(const CString& cariKod, const CString& fieldName, const CString& newValue)
+{
+    if (!EnsureConnection())
+    {
+        MessageBox(NULL, L"Veritabanı bağlantısı kurulamadı!", L"Hata", MB_ICONERROR);
+        return false;
+    }
+
+    // 1. 🌟 SENKRONİZASYON ALANINI OLUŞTUR 🌟
+    // Not: GetCurrentIsoUtc() yardımcı fonksiyonunun tanımlı olduğunu varsayıyoruz.
+    CString nowUtc = GetCurrentIsoUtc();
+
+    CString safeValue = EscapeSQLString(newValue);
+    CString safeField = fieldName;
+    CString safeCariKod = EscapeSQLString(cariKod); // cariKod zaten parametre, ama SQL'de kaçışlı kullanılması daha doğru.
+
+    // 2. SQL Sorgusunu Güncelle (Updated_At alanını ekle)
+    CString sql;
+    sql.Format(L"UPDATE Customer SET [%s] = '%s', [Updated_At] = '%s' WHERE [Cari_Kod] = '%s'",
+        (LPCTSTR)safeField,
+        (LPCTSTR)safeValue,
+        (LPCTSTR)nowUtc, // 🌟 UPDATED_AT ALANI EKLENDİ
+        (LPCTSTR)safeCariKod);
+
+    TRACE(L"UPDATE FIELD SQL: %s\n", sql);
+
+    bool ok = ExecuteSQL(sql);
+
+    if (ok)
+    {
+        // 3. 🌟 KRİTİK EKLENTİ: SyncBridge'e Bildirim Gönder 🌟
+        if (m_pSync)
+        {
+            // Tek alan güncellemesi yapıldığı için, SyncManager'ın çatışma çözümlemesi için
+            // sadece sync_id, Updated_At ve değişen alanı içeren bir JSON oluşturmak yeterlidir.
+
+            nlohmann::json rowData;
+
+            // Sync alanları
+            // Not: Cari_Kod'un sync_id olarak kullanıldığını varsayıyoruz.
+            rowData["sync_id"] = CStringToAnsi(cariKod);
+            rowData["Updated_At"] = CStringToAnsi(nowUtc);
+
+            // Güncellenen alanı ekle (JSON key'leri ANSI olmalıdır)
+            rowData[CStringToAnsi(fieldName)] = CStringToAnsi(newValue);
+
+            // Updated_At, deleted ve primary keyler haricindeki diğer alanların JSON'a eklenmediğini
+            // ancak SyncManager'ın bunu ele alabileceğini varsayıyoruz.
+
+            // SyncBridge'e bildir: "Customer" tablosunda "UPSERT" (Güncelle) yapıldı.
+            m_pSync->OnLocalChange("Customer", "UPSERT", rowData);
+        }
+
+        // Bu metot ExecuteSQL kullandığı için Close/Open yönetimi ExecuteSQL içinde veya
+        // çağrı noktasında yapılmalıdır. (Original UpdateCustomer metodunda manuel Close/Open vardı.)
+
+        return true;
+    }
+    else
+    {
+        MessageBox(NULL, L"Kayıt güncellenemedi!", L"SQL Hatası", MB_ICONERROR);
+        return false;
+    }
+}
+
+std::vector<Offer_cstr> DatabaseManager::GetOffersByPropertyID(const CString& propID)
+{
+    std::vector<Offer_cstr> list;
+    if (!EnsureConnection()) return list;
+
+    try
+    {
+        // JOIN ile Müşteri Adını da alıyoruz
+        CString sql;
+        sql.Format(_T("SELECT T.*, C.AdSoyad, C.Telefon FROM Offers T ")
+            _T("LEFT JOIN Customer C ON T.CustomerID = C.Cari_Kod ")
+            _T("WHERE T.PropertyID = '%s' ORDER BY T.OfferDate DESC"),
+            (LPCTSTR)EscapeSQLString(propID));
+
+        _RecordsetPtr rs;
+        rs.CreateInstance(__uuidof(Recordset));
+        rs->Open((_variant_t)sql, _variant_t((IDispatch*)IConnectionPtr, true), adOpenStatic, adLockReadOnly, adCmdText);
+
+        while (!rs->EndOfFile)
+        {
+            Offer_cstr o;
+            // Temel Bilgiler
+            _variant_t vID = rs->Fields->GetItem("OfferID")->Value;
+            _variant_t vDate = rs->Fields->GetItem("OfferDate")->Value;
+            _variant_t vPrice = rs->Fields->GetItem("OfferPrice")->Value;
+            _variant_t vStat = rs->Fields->GetItem("Status")->Value;
+            _variant_t vNote = rs->Fields->GetItem("Notes")->Value;
+
+            // Müşteri Bilgisi (CustomerID alanına Adı Soyadı koyalım ki listede o görünsün)
+            _variant_t vName = rs->Fields->GetItem("AdSoyad")->Value;
+            _variant_t vTel = rs->Fields->GetItem("Telefon")->Value;
+
+            o.OfferID = VariantToCString(vID);
+            o.OfferDate = VariantToCString(vDate);
+            o.OfferPrice = VariantToCString(vPrice);
+            o.Status = VariantToCString(vStat);
+            o.Notes = VariantToCString(vNote);
+
+            // İsim varsa onu, yoksa ID'yi göster
+            CString custName = VariantToCString(vName);
+            if (!custName.IsEmpty())
+                o.CustomerID = custName + _T(" (") + VariantToCString(vTel) + _T(")");
+            else
+                o.CustomerID = _T("Kayıtsız Müşteri");
+
+            list.push_back(o);
+            rs->MoveNext();
+        }
+        rs->Close();
+    }
+    catch (...) {}
+    return list;
+}
+
+void DatabaseManager::SetDatabasePath(const CString& path)
+{
+    m_lastDbPath = path;
+
+    CString conn;
+    conn.Format(L"Provider=Microsoft.ACE.OLEDB.16.0;Data Source=%s;", (LPCTSTR)path);
+    m_connectionString = conn;
+}
+
+bool DatabaseManager::IsCariCodeExists(const CString& cariKod)
+{
+    if (!IsConnected()) { return true; } // Bağlantı yoksa, güvenlik için hata döndür
+
+    CString strSQL;
+    strSQL.Format(_T("SELECT Cari_Kod FROM Customer WHERE Cari_Kod = '%s'"),
+        (LPCTSTR)EscapeSQLString(cariKod));
+
+    _RecordsetPtr pRecordset = NULL;
+    HRESULT hr = S_OK;
+
+    try
+    {
+        pRecordset.CreateInstance(__uuidof(Recordset));
+        hr = pRecordset->Open((_variant_t)strSQL,
+            _variant_t((IDispatch*)IConnectionPtr, true),
+            adOpenStatic, adLockReadOnly, adCmdText);
+
+        // Kayıt kümesi boş değilse, cari kod mevcuttur.
+        bool exists = pRecordset->EndOfFile == VARIANT_FALSE;
+
+        if (pRecordset) pRecordset->Close();
+        return exists;
+    }
+    catch (_com_error& e)
+    {
+        // Hata durumunda (örneğin tablo yoksa) hata mesajını göster
+        CString errorMessage;
+        errorMessage.Format(_T("Cari Kod Kontrol Hatası: %s"), (LPCTSTR)e.Description());
+        ::MessageBox(NULL, errorMessage, _T("Veritabanı Okuma Hatası"), MB_ICONERROR);
+        return true; // Hata durumunda güvenlik için mevcut kabul edelim
+    }
+}
+
+// DatabaseManager.cpp - GenerateNextCariCode metodunun YENİ VERSİYONU
+
+
+
+
+// dataIsMe.cpp - KOD ÜRETİMİ (GenerateNext...Code)
+
+/**
+ * Belirtilen prefix (ön ek) ve tablo adını kullanarak sonraki benzersiz kodu üretir.
+ * Yalnızca Deleted=FALSE kayıtları dikkate alır.
+ */
+ // --- dataIsMe.cpp: GÜNCELLENMİŞ VE GÜVENLİ GenerateNextPropertyCode ---
+
+CString DatabaseManager::GenerateNextPropertyCode(const CString& tableName, const CString& prefix)
+{
+    std::lock_guard<std::mutex> lock(g_propertyCodeMutex);
+
+    if (!IsConnected())
+    {
+        LogToFile(L"[ERROR]", L"GenerateNextPropertyCode: DB bağlantısı yok!");
+        return _T("");
+    }
+
+    // Kod alanı
+    CString codeField;
+    if (tableName.CompareNoCase(L"Customer") == 0)       codeField = L"Cari_Kod";
+    else if (tableName.CompareNoCase(L"HomeTbl") == 0)  codeField = L"Home_Code";
+    else if (tableName.CompareNoCase(L"Land") == 0)      codeField = L"Land_Code";
+    else if (tableName.CompareNoCase(L"Field") == 0)     codeField = L"Field_Code";
+    else if (tableName.CompareNoCase(L"Vineyard") == 0)  codeField = L"Vineyard_Code";
+    else if (tableName.CompareNoCase(L"Villa") == 0)     codeField = L"Villa_Code";
+    else if (tableName.CompareNoCase(L"Commercial") == 0)codeField = L"Commercial_Code";
+    else if (tableName.CompareNoCase(L"Car") == 0) codeField = L"Car_Code";
+    else
+    {
+        LogToFile(L"[ERROR]", L"GenerateNextPropertyCode: Bilinmeyen tablo adı: " + tableName);
+        return _T("");
+    }
+
+    // 1. Tercihli sorgu: Deleted kolonunu ve Nz()’yi kullan
+    CString sql;
+    sql.Format(
+        L"SELECT MAX([%s]) AS MaxCode FROM [%s] "
+        L"WHERE ([%s] LIKE '%s%%%%') AND (Nz([Deleted],0)=0)",
+        (LPCWSTR)codeField, (LPCWSTR)tableName, (LPCWSTR)codeField, (LPCWSTR)prefix);
+
+    LogToFile(L"[SQL]", sql);
+
+    long nextNumber = 1;
+
+    try
+    {
+        _CommandPtr cmd;
+        cmd.CreateInstance(__uuidof(Command));
+        cmd->ActiveConnection = IConnectionPtr;
+        cmd->CommandText = (_bstr_t)sql;
+        cmd->CommandType = adCmdText;
+
+        _RecordsetPtr rs;
+        rs.CreateInstance(__uuidof(Recordset));
+        rs = cmd->Execute(NULL, NULL, adCmdText);
+
+        // Bazı sağlayıcılarda boş tabloda dahi tek satır (NULL) gelir.
+        bool hasRow = (rs != nullptr) && (rs->State == adStateOpen) && !((bool)rs->EndOfFile);
+        if (hasRow)
+        {
+            _variant_t vtMax = rs->Fields->GetItem(L"MaxCode")->Value;
+            if (vtMax.vt != VT_NULL && vtMax.vt != VT_EMPTY)
+            {
+                CString maxCode = (vtMax.vt == VT_BSTR) ? (LPCWSTR)vtMax.bstrVal : L"";
+                int prefixLen = prefix.GetLength();
+                if (maxCode.GetLength() > prefixLen)
+                {
+                    CString numeric = maxCode.Mid(prefixLen);
+                    nextNumber = _ttoi(numeric) + 1;
+                }
+            }
+        }
+
+        if (rs) rs->Close();
+    }
+    catch (const _com_error& e)
+    {
+        // Fallback: Deleted kolonu yoksa / Nz() tanınmıyorsa buraya düşer.
+        CString err1;
+        err1.Format(L"GenerateNextPropertyCode İlk Sorgu Hatası (%s): 0x%08lx %s",
+            tableName.GetString(), (unsigned long)e.Error(), (LPCWSTR)e.Description());
+        LogToFile(L"[ERROR]", err1);
+
+        // 2. Geriye dönüş sorgusu: Deleted filtresi olmadan dene
+        try
+        {
+            sql.Format(
+                L"SELECT MAX([%s]) AS MaxCode FROM [%s] "
+                L"WHERE ([%s] LIKE '%s%%%%')",
+                (LPCWSTR)codeField, (LPCWSTR)tableName, (LPCWSTR)codeField, (LPCWSTR)prefix);
+
+            LogToFile(L"[SQL]", sql);
+
+            _CommandPtr cmd2;
+            cmd2.CreateInstance(__uuidof(Command));
+            cmd2->ActiveConnection = IConnectionPtr;
+            cmd2->CommandText = (_bstr_t)sql;
+            cmd2->CommandType = adCmdText;
+
+            _RecordsetPtr rs2;
+            rs2.CreateInstance(__uuidof(Recordset));
+            rs2 = cmd2->Execute(NULL, NULL, adCmdText);
+
+            bool hasRow2 = (rs2 != nullptr) && (rs2->State == adStateOpen) && !((bool)rs2->EndOfFile);
+            if (hasRow2)
+            {
+                _variant_t vtMax = rs2->Fields->GetItem(L"MaxCode")->Value;
+                if (vtMax.vt != VT_NULL && vtMax.vt != VT_EMPTY)
+                {
+                    CString maxCode = (vtMax.vt == VT_BSTR) ? (LPCWSTR)vtMax.bstrVal : L"";
+                    int prefixLen = prefix.GetLength();
+                    if (maxCode.GetLength() > prefixLen)
+                    {
+                        CString numeric = maxCode.Mid(prefixLen);
+                        nextNumber = _ttoi(numeric) + 1;
+                    }
+                }
+            }
+
+            if (rs2) rs2->Close();
+        }
+        catch (const _com_error& e2)
+        {
+            CString err2;
+            err2.Format(L"GenerateNextPropertyCode Fallback Sorgu Hatası (%s): 0x%08lx %s",
+                tableName.GetString(), (unsigned long)e2.Error(), (LPCWSTR)e2.Description());
+            LogToFile(L"[ERROR]", err2);
+            return _T(""); // iki sorgu da patladıysa boş dön.
+        }
+    }
+
+    // Kod oluştur
+    CString newCode;
+    newCode.Format(L"%s%06d", (LPCWSTR)prefix, nextNumber);
+
+    CString msg;
+    msg.Format(L"Yeni kod üretildi: %s (%s)", newCode.GetString(), tableName.GetString());
+    LogToFile(L"[INFO]", msg);
+
+    return newCode;
+}
+
+
+
+// DataIsMe.h'a eklediğiniz ve şimdi burada uygulanması gereken kısaltmalar:
+// Home
+CString DatabaseManager::GenerateNextHomeCode()         { return GenerateNextPropertyCode(TABLE_NAME_HOME, L"HomeTbl"); }
+// Land
+CString DatabaseManager::GenerateNextLandCode()         { return GenerateNextPropertyCode(TABLE_NAME_LAND, L"LAND"); }
+// Field
+CString DatabaseManager::GenerateNextFieldCode()        { return GenerateNextPropertyCode(TABLE_NAME_FIELD, L"FIELD"); }
+// Vineyard
+CString DatabaseManager::GenerateNextVineyardCode()     { return GenerateNextPropertyCode(TABLE_NAME_VINEYARD, L"VINE"); }
+// Villa
+CString DatabaseManager::GenerateNextVillaCode()        { return GenerateNextPropertyCode(TABLE_NAME_VILLA, L"VILLA"); }
+// Commercial
+CString DatabaseManager::GenerateNextCommercialCode()   { return GenerateNextPropertyCode(TABLE_NAME_COMMERCIAL, L"COMM"); }
+
+
+
+
+
+
+
+
+
+
+CString DatabaseManager::GenerateNextCarCode()
+{
+    return GenerateNextPropertyCode(TABLE_NAME_CAR, L"CAR");
+}
+
+std::vector<Car_cstr> DatabaseManager::GetCarsByCariKod(const CString& cariKod)
+{
+    return GetRecordsByCariKod<Car_cstr>(cariKod);
+}
+
+
+
+
+
+CString DatabaseManager::GenerateNextCariCode()
+{
+    const CString PREFIX = _T("Cus");
+    const int PREFIX_LEN = PREFIX.GetLength();
+
+    if (!IsConnected())
+        return _T("Cus0001");
+
+    long maxNum = 0;
+
+    try
+    {
+        _RecordsetPtr rs;
+        rs.CreateInstance(__uuidof(Recordset));
+
+        // Prefix ile başlayan tüm kodları getir
+        CString sql;
+        sql.Format(_T("SELECT [Cari_Kod] FROM [Customer] WHERE [Cari_Kod] LIKE '%s%%'"), (LPCTSTR)PREFIX);
+
+        rs->Open((_variant_t)sql,
+            _variant_t((IDispatch*)IConnectionPtr, true),
+            adOpenStatic, adLockReadOnly, adCmdText);
+
+        // --- DÜZELTİLMİŞ ALIŞ ŞEKLİ ---
+        // GetItem için VARIANT kullan, Value için NULL/EMPTY kontrolü yap.
+        const _variant_t fldName(L"Cari_Kod");
+
+        while (!rs->EndOfFile)
+        {
+            _variant_t v = rs->Fields->GetItem(fldName)->Value;
+
+            CString code;
+            if (v.vt == VT_BSTR && v.bstrVal != nullptr)
+            {
+                code = v.bstrVal;
+            }
+
+
+
+            else if (v.vt != VT_NULL && v.vt != VT_EMPTY)
+            {
+                // Güvenli: VARIANT'ı stringe çevir
+                _bstr_t tmp(v);
+                code = (wchar_t*)tmp;
+            }
+            // (vt == NULL/EMPTY ise code boş kalır)
+
+            if (!code.IsEmpty() && code.GetLength() > PREFIX_LEN && code.Left(PREFIX_LEN) == PREFIX)
+            {
+                CString numPart = code.Mid(PREFIX_LEN);
+                long num = _ttol(numPart);
+                if (num > maxNum)
+                    maxNum = num;
+            }
+
+            rs->MoveNext();
+        }
+
+        if (rs) rs->Close();
+
+        CString nextCode;
+        nextCode.Format(_T("%s%06ld"), (LPCTSTR)PREFIX, maxNum + 1);
+        TRACE(_T("[DB] Yeni Cari Kod üretildi: %s\n"), nextCode);
+        return nextCode;
+    }
+    catch (const _com_error& e)
+    {
+        TRACE(_T("[Cari_Kod][HATA] %s\n"), (LPCTSTR)_bstr_t(e.Description()));
+        return _T("CCustomer000001");
+    }
+}
+
+// Tablonun boş olup olmadığını hızlıca kontrol eder.
+bool DatabaseManager::IsTableEmpty(const CString& tableName)
+{
+    if (!IsConnected()) return true;
+
+    CString strSQL;
+    strSQL.Format(_T("SELECT COUNT(*) AS RecordCount FROM %s"), (LPCTSTR)tableName);
+    _RecordsetPtr pRecordset = NULL;
+
+    try
+    {
+        pRecordset.CreateInstance(__uuidof(Recordset));
+        pRecordset->Open((_variant_t)strSQL,
+            _variant_t((IDispatch*)IConnectionPtr, true),
+            adOpenStatic, adLockReadOnly, adCmdText);
+
+        if (!pRecordset->EndOfFile)
+        {
+            _variant_t vtCount = pRecordset->Fields->GetItem(_T("RecordCount"))->Value;
+            long count = 0;
+            if (vtCount.vt != VT_NULL)
+            {
+                // long'a dönüştürerek kayıt sayısını al
+                count = vtCount.lVal;
+            }
+
+            pRecordset->Close();
+            return (count == 0); // Kayıt sayısı 0 ise boş demektir
+        }
+
+        pRecordset->Close();
+        return true; // Sorgu hatası veya beklenmedik durum, boş kabul edelim
+    }
+    catch (_com_error& e)
+    {
+        CString errorMessage;
+        errorMessage.Format(_T("Tablo Kontrol Hatası (%s): %s"), tableName, (LPCTSTR)e.Description());
+        TRACE(errorMessage);
+        // Kritik hata: Eğer tabloya erişilemiyorsa, başlatma hatası var demektir.
+        ::MessageBox(NULL, errorMessage, _T("Kritik Veritabanı Hatası"), MB_ICONERROR);
+        return true;
+    }
+}
+
+
+
+
+
+
+
+
+// dataIsMe.cpp
+
+std::vector<HeaderInfo> DatabaseManager::GetHeaderConfig(const CString& tableName) const
+{
+    std::vector<HeaderInfo> config;
+    const auto& schema = SchemaManager::Get().GetSchema(tableName);
+
+    for (const auto& field : schema)
+    {
+        // 1. Görünür mü? (FieldDef içindeki 'visible' bayrağı)
+        // 2. Sistem alanı mı? (resID == 0 olanlar genelde sistem alanıdır, sync_id vb.)
+        //    Ancak 'Deleted' gibi alanları listede görmek istemeyiz.
+
+        if (field.visible && field.resID != 0)
+        {
+            // Attribute'lar da listede gösterilebilir (örneğin 'Manzara' attribute ise)
+            // SchemaManager'da bu alanların 'width' ve 'label' bilgisi zaten var.
+            config.push_back({ field.label, field.width });
+        }
+    }
+
+    // Eğer şema boşsa veya hiçbir alan görünür değilse varsayılan bir kolon ekle (Hata önleme)
+    if (config.empty()) {
+        config.push_back({ _T("Bilgi"), 300 });
+    }
+
+    return config;
+}
+
+
+
+
+
+
+
+
+
+
+
+bool DatabaseManager::DeleteCustomers(const std::vector<CString>& cariCodes)
+{
+    if (!IsConnected() || cariCodes.empty()) return false;
+
+    // 1. Senkronizasyon için UTC Zaman Damgasını Al
+    // Not: GetCurrentIsoUtc() yardımcı fonksiyonunun tanımlı olduğunu varsayıyoruz.
+    CString nowUtc = GetCurrentIsoUtc();
+
+    CString strINClause = _T("");
+
+    // Silinecek kodları 'CODE1', 'CODE2', 'CODE3' formatında string'e dönüştür
+    for (const CString& code : cariCodes)
+    {
+        // ÖNEMLİ: Her bir kodu SQL kaçış işleminden geçir
+        CString escapedCode = EscapeSQLString(code);
+        strINClause.AppendFormat(_T("'%s',"), (LPCTSTR)escapedCode);
+    }
+
+    // Son virgülden kurtul
+    strINClause.TrimRight(_T(','));
+
+    if (strINClause.IsEmpty()) return false;
+
+    // 2. 🌟 KRİTİK DEĞİŞİKLİK: DELETE yerine UPDATE ile işaretle 🌟
+    // Kaydı Deleted=TRUE olarak işaretle ve Updated_At zamanını güncelle
+    CString strSQL;
+    strSQL.Format(
+        _T("UPDATE Customer SET Deleted = TRUE, Updated_At = '%s' WHERE Cari_Kod IN (%s)"),
+        (LPCTSTR)EscapeSQLString(nowUtc), // Updated_At değeri
+        (LPCTSTR)strINClause
+    );
+
+    // TRACE(_T("Müşteri İşaretleme SQL'i: %s\n"), strSQL); // Debug için açılabilir
+
+    // 3. ExecuteSQL ile işaretleme (silme) işlemini yap
+    if (ExecuteSQL(strSQL))
+    {
+        // 4. 🌟 KRİTİK EKLENTİ: SyncBridge'e Bildirim Gönder 🌟
+        // İşaretleme başarılıysa, her silinen kaydı SyncManager'a bildir
+        if (m_pSync)
+        {
+            // SyncBridge, "DELETE" aksiyonu ile sadece sync_id'yi bekler
+            for (const CString& code : cariCodes) {
+                // Not: Cari_Kod'un aynı zamanda sync_id olarak kullanıldığını varsayıyoruz
+                m_pSync->OnLocalChange("Customer", "DELETE", { {"sync_id", CStringToAnsi(code)} });
+            }
+        }
+
+        // 5. Zamanlama Çözümü: Veritabanını hemen senkronize et
+        if (IConnectionPtr != NULL)
+        {
+            IConnectionPtr->Close();
+            IConnectionPtr->Open((_bstr_t)GetConnectionString(), _bstr_t(""), _bstr_t(""), adConnectUnspecified);
+        }
+
+        TRACE(_T("%d adet müşteri başarıyla silinmek üzere işaretlendi (Sync). \n"), cariCodes.size());
+        return true;
+    }
+    return false;
+}
+
+
+
+
+// DatabaseManager.cpp (Uygulama)
+bool DatabaseManager::UpdateCustomerStatus(const CString& cariKod, const CString& statusID)
+{
+    if (!IsConnected()) return false;
+
+    // 1. 🌟 SENKRONİZASYON ALANINI OLUŞTUR 🌟
+    // Not: GetCurrentIsoUtc() yardımcı fonksiyonunun tanımlı olduğunu varsayıyoruz.
+    CString nowUtc = GetCurrentIsoUtc();
+
+    // Güvenli string formatı
+    CString strSQL;
+
+    // 2. SQL SORGUSU: Calisma_Durumu VE Updated_At alanını güncelle
+    strSQL.Format(_T("UPDATE Customer SET Calisma_Durumu = '%s', Updated_At = '%s' WHERE Cari_Kod = '%s'"),
+        (LPCTSTR)EscapeSQLString(statusID),
+        (LPCTSTR)EscapeSQLString(nowUtc), // 🌟 UPDATED_AT GÜNCELLENDİ
+        (LPCTSTR)EscapeSQLString(cariKod));
+
+    // 3. Execute SQL
+    bool success = ExecuteSQL(strSQL);
+
+    // 4. 🌟 KRİTİK EKLENTİ: SyncBridge'e Bildirim Gönder 🌟
+    if (success)
+    {
+        if (m_pSync)
+        {
+            nlohmann::json rowData;
+
+            // Sync metadata
+            rowData["sync_id"] = CStringToAnsi(cariKod);
+            rowData["Updated_At"] = CStringToAnsi(nowUtc);
+
+            // Güncellenen tekil alanı ekle
+            rowData["Calisma_Durumu"] = CStringToAnsi(statusID);
+
+            // SyncBridge'e bildir: "Customer" tablosunda "UPSERT" (Güncelle) yapıldı.
+            m_pSync->OnLocalChange("Customer", "UPSERT", rowData);
+        }
+    }
+
+    // ExecuteSQL, Close/Open döngüsünü tetikleyecektir (orijinal kodda böyle varsayılıyor).
+    return success;
+}
+
+
+
+bool DatabaseManager::UpdateFieldGlobal(const CString& tableName, const CString& codeField, const CString& code, const CString& fieldName, const CString& newValue)
+{
+    if (!EnsureConnection()) return false;
+
+    CString safeTable = tableName; CString safeCodeField = codeField;
+    CString safeCodeVal = EscapeSQLString(code); CString safeVal = EscapeSQLString(newValue);
+    CString nowUtc = GetCurrentIsoUtc();
+
+    bool isAttribute = false;
+    const auto& schema = SchemaManager::Get().GetSchema(tableName);
+    for (const auto& f : schema) { if (f.dbName.CompareNoCase(fieldName) == 0) { isAttribute = f.isAttribute; break; } }
+
+    bool updateSuccess = false;
+    try {
+        if (isAttribute) {
+            // Attribute (JSON) Güncellemesi
+            CString qSelect; qSelect.Format(_T("SELECT [Attributes] FROM [%s] WHERE [%s]='%s'"), (LPCTSTR)safeTable, (LPCTSTR)safeCodeField, (LPCTSTR)safeCodeVal);
+            _RecordsetPtr rs = IConnectionPtr->Execute((_bstr_t)qSelect, NULL, adCmdText);
+            CString currentJsonStr; if (!rs->EndOfFile) { _variant_t v = rs->Fields->GetItem("Attributes")->Value; if (v.vt != VT_NULL) currentJsonStr = (LPCTSTR)(_bstr_t)v; } rs->Close();
+
+            nlohmann::json j;
+            try { if (!currentJsonStr.IsEmpty()) j = nlohmann::json::parse(CStringToAnsi(currentJsonStr)); }
+            catch (...) { j = nlohmann::json::object(); }
+            j[CStringToAnsi(fieldName)] = CStringToAnsi(newValue);
+
+            CString newJsonStr = AnsiToCString(j.dump());
+            CString qUpdate; qUpdate.Format(_T("UPDATE [%s] SET [Attributes]='%s', [Updated_At]='%s' WHERE [%s]='%s'"),
+                (LPCTSTR)safeTable, (LPCTSTR)EscapeSQLString(newJsonStr), (LPCTSTR)nowUtc, (LPCTSTR)safeCodeField, (LPCTSTR)safeCodeVal);
+            IConnectionPtr->Execute((_bstr_t)qUpdate, NULL, adExecuteNoRecords);
+            updateSuccess = true;
+        }
+        else {
+            // Normal Kolon
+            CString qUpdate; qUpdate.Format(_T("UPDATE [%s] SET [%s]='%s', [Updated_At]='%s' WHERE [%s]='%s'"),
+                (LPCTSTR)safeTable, (LPCTSTR)fieldName, (LPCTSTR)safeVal, (LPCTSTR)nowUtc, (LPCTSTR)safeCodeField, (LPCTSTR)safeCodeVal);
+            IConnectionPtr->Execute((_bstr_t)qUpdate, NULL, adExecuteNoRecords);
+            updateSuccess = true;
+        }
+    }
+    catch (...) { return false; }
+
+    // 🔥 CLOUD SYNC: Güncelleme Bildirimi
+    if (updateSuccess && m_pSync) {
+        CString syncId;
+        try {
+            CString qSync; qSync.Format(_T("SELECT sync_id FROM [%s] WHERE [%s]='%s'"), (LPCTSTR)safeTable, (LPCTSTR)safeCodeField, (LPCTSTR)safeCodeVal);
+            _RecordsetPtr rs = IConnectionPtr->Execute((_bstr_t)qSync, NULL, adCmdText);
+            if (!rs->EndOfFile) { _variant_t v = rs->Fields->GetItem("sync_id")->Value; if (v.vt != VT_NULL) syncId = (LPCTSTR)(_bstr_t)v; } rs->Close();
+        }
+        catch (...) {}
+
+        if (!syncId.IsEmpty()) {
+            nlohmann::json jSync;
+            jSync["sync_id"] = CStringToAnsi(syncId);
+            jSync["Updated_At"] = CStringToAnsi(nowUtc);
+            jSync[CStringToAnsi(fieldName)] = CStringToAnsi(newValue);
+            m_pSync->OnLocalChange(CStringToAnsi(tableName), "UPSERT", jSync);
+        }
+    }
+    return updateSuccess;
+}
+
+
+// Land (Arsa)
+Land_cstr DatabaseManager::GetLandByCode(const CString& landCode)
+{
+    // Land_Code'a göre tek Land kaydını çeker.
+    return GetRecordByCode<Land_cstr>(landCode);
+}
+
+// Field (Tarla)
+Field_cstr DatabaseManager::GetFieldByCode(const CString& fieldCode)
+{
+    // Field_Code'a göre tek Field kaydını çeker.
+    return GetRecordByCode<Field_cstr>(fieldCode);
+}
+
+// Vineyard (Bağ/Bahçe)
+Vineyard_cstr DatabaseManager::GetVineyardByCode(const CString& vineyardCode)
+{
+    // Vineyard_Code'a göre tek Vineyard kaydını çeker.
+    return GetRecordByCode<Vineyard_cstr>(vineyardCode);
+}
+
+// Villa
+Villa_cstr DatabaseManager::GetVillaByCode(const CString& villaCode)
+{
+    // Villa_Code'a göre tek Villa kaydını çeker.
+    return GetRecordByCode<Villa_cstr>(villaCode);
+}
+
+// Commercial (Ticari Mülk)
+Commercial_cstr DatabaseManager::GetCommercialByCode(const CString& commercialCode)
+{
+    // Commercial_Code'a göre tek Commercial kaydını çeker.
+    return GetRecordByCode<Commercial_cstr>(commercialCode);
+}
+
+
+
+Customer_cstr DatabaseManager::GetCustomerByCariKod(const CString& cariKod) {
+    // Bu fonksiyon GetRecordsByCariKod şablonunu kullanır, ancak bu bir tekil kayıt çeken fonksiyondur.
+    // GetRecordByCode şablonunu kullanması daha mantıklıdır (Cari_Kod'un PK olduğunu varsayarak)
+    return GetRecordByCode<Customer_cstr>(cariKod);
+}
+
+// dataIsMe.cpp - JENERİK ŞABLON ÇAĞRILARI
+
+// Home (HomeTbl)
+std::vector<Home_cstr> DatabaseManager::GetHomesByCariKod(const CString& cariKod)
+{
+    // Cari Kod'a ait tüm HomeTbl kayıtlarını çeker.
+    return GetRecordsByCariKod<Home_cstr>(cariKod);
+}
+
+// Land (Arsa)
+std::vector<Land_cstr> DatabaseManager::GetLandsByCariKod(const CString& cariKod)
+{
+    // Cari Kod'a ait tüm Land (Arsa) kayıtlarını çeker.
+    return GetRecordsByCariKod<Land_cstr>(cariKod);
+}
+
+// Field (Tarla)
+std::vector<Field_cstr> DatabaseManager::GetFieldsByCariKod(const CString& cariKod)
+{
+    // Cari Kod'a ait tüm Field (Tarla) kayıtlarını çeker.
+    return GetRecordsByCariKod<Field_cstr>(cariKod);
+}
+
+// Vineyard (Bağ/Bahçe)
+std::vector<Vineyard_cstr> DatabaseManager::GetVineyardsByCariKod(const CString& cariKod)
+{
+    // Cari Kod'a ait tüm Vineyard (Bağ/Bahçe) kayıtlarını çeker.
+    return GetRecordsByCariKod<Vineyard_cstr>(cariKod);
+}
+
+// Villa
+std::vector<Villa_cstr> DatabaseManager::GetVillasByCariKod(const CString& cariKod)
+{
+    // Cari Kod'a ait tüm Villa kayıtlarını çeker.
+    return GetRecordsByCariKod<Villa_cstr>(cariKod);
+}
+
+// Commercial (Ticari Mülk)
+std::vector<Commercial_cstr> DatabaseManager::GetCommercialsByCariKod(const CString& cariKod)
+{
+    // Cari Kod'a ait tüm Commercial (Ticari Mülk) kayıtlarını çeker.
+    return GetRecordsByCariKod<Commercial_cstr>(cariKod);
+}
+
+// NOT: Eski manuel Get...ByCariKod fonksiyonlarının gövdeleri bu kod ile değiştirilmelidir.
+
+
+CString DatabaseManager::GetFieldString(_RecordsetPtr& rs, const CString& fieldName) const
+{
+    try
+    {
+        if (rs == nullptr || rs->GetState() != adStateOpen)
+            return _T("");
+
+        _variant_t vtValue = rs->Fields->Item[_bstr_t(fieldName)]->Value;
+
+        if (vtValue.vt == VT_NULL || vtValue.vt == VT_EMPTY)
+            return _T("");
+
+        return CString((LPCTSTR)(_bstr_t)vtValue);
+    }
+    catch (const _com_error&)
+    {
+        return _T("");
+    }
+}
+
+// src/dataIsMe.cpp içine (Eskisinin yerine yapıştırın)
+
+std::vector<Customer_cstr> DatabaseManager::GetCustomers()
+{
+    std::vector<Customer_cstr> customers;
+
+    // 1. Bağlantı Kontrolü
+    if (!EnsureConnection()) {
+        TRACE(L"[ERROR] GetCustomers: Bağlantı yok.\n");
+        return customers;
+    }
+
+    // 2. SQL Sorgusu (Sıralı ve Silinmemişler)
+    // "SELECT *" diyerek tüm alanları çekiyoruz, eşleştirmeyi SetFieldByStringName yapacak.
+    CString strSQL = _T("SELECT * FROM Customer WHERE Deleted = FALSE ORDER BY Cari_Kod DESC");
+
+    try
+    {
+        _RecordsetPtr rs;
+        rs.CreateInstance(__uuidof(Recordset));
+        rs->Open((_variant_t)strSQL,
+            _variant_t((IDispatch*)IConnectionPtr, true),
+            adOpenStatic, adLockReadOnly, adCmdText);
+
+        if (rs->EndOfFile == VARIANT_FALSE)
+        {
+            long fieldCount = rs->Fields->Count;
+
+            while (!rs->EndOfFile)
+            {
+                Customer_cstr c; // Yeni müşteri struct'ı
+
+                // --- OTOMATİK PARSE İŞLEMİ ---
+                // Döngü ile tablodaki tüm sütunları gez, struct'taki isme göre eşleştir.
+                for (long i = 0; i < fieldCount; ++i)
+                {
+                    _bstr_t bstrName = rs->Fields->Item[i]->Name;
+                    _variant_t val = rs->Fields->Item[i]->Value;
+
+                    CString fieldName = (LPCWSTR)bstrName;
+                    CString fieldValue = VariantToCString(val); // Helper fonksiyonumuz
+
+                    // 🧙‍♂️ SİHİRLİ SATIR: Veriyi struct'a otomatik basar
+                    SetFieldByStringName(c, fieldName, fieldValue);
+                }
+
+                customers.push_back(c);
+                rs->MoveNext();
+            }
+        }
+        rs->Close();
+        TRACE(L"[INFO] %d adet müşteri yüklendi.\n", customers.size());
+    }
+    catch (const _com_error& e)
+    {
+        CString err;
+        err.Format(L"[ERROR] GetCustomers Hatası: %s", (LPCWSTR)e.Description());
+        LogToFile(L"[ERROR]", err);
+    }
+
+    return customers;
+}
+
+
+bool DatabaseManager::DeleteRecord(const CString& tableName, const CString& code)
+{
+    // 0. Bağlantı Kontrolü
+    if (!IsConnected()) {
+        InitializeDatabase();
+        if (!IsConnected()) return false;
+    }
+
+    // 1. KRİTİK DÜZELTME: Gelen tablo adını temizle ve anahtar alan adını çözümle.
+    CString cleanTableName = tableName;
+    cleanTableName.Trim();
+
+    CString codeField;
+
+    // Tablolara özel anahtar alan adları (Primary Keys)
+    if (cleanTableName.CompareNoCase(_T("HomeTbl")) == 0)       codeField = _T("Home_Code");
+    else if (cleanTableName.CompareNoCase(_T("Land")) == 0)  codeField = _T("Land_Code");
+    else if (cleanTableName.CompareNoCase(_T("Field")) == 0) codeField = _T("Field_Code");
+    else if (cleanTableName.CompareNoCase(_T("Vineyard")) == 0) codeField = _T("Vineyard_Code");
+    else if (cleanTableName.CompareNoCase(_T("Villa")) == 0) codeField = _T("Villa_Code");
+    else if (cleanTableName.CompareNoCase(_T("Commercial")) == 0) codeField = _T("Commercial_Code");
+    else if (cleanTableName.CompareNoCase(_T("Customer")) == 0) codeField = _T("Cari_Kod");
+    else
+    {
+        TRACE(_T("HATA: DeleteRecord - Tanımlanamayan tablo adı: %s\n"), cleanTableName.GetString());
+        return false;
+    }
+
+    // 2. sync_id'yi Çek (Soft Delete bildirimi için kritik)
+    std::string sync_id;
+    CString sqlSelect;
+    sqlSelect.Format(_T("SELECT sync_id FROM [%s] WHERE [%s] = '%s'"),
+        (LPCTSTR)cleanTableName, (LPCTSTR)codeField, (LPCTSTR)EscapeSQLString(code));
+
+    try
+    {
+        _RecordsetPtr pRecordset = NULL;
+        pRecordset.CreateInstance(__uuidof(Recordset));
+        pRecordset->Open((_variant_t)sqlSelect,
+            _variant_t((IDispatch*)IConnectionPtr, true),
+            adOpenStatic, adLockReadOnly, adCmdText);
+
+        if (!pRecordset->EndOfFile)
+        {
+            _variant_t vtsync_id = pRecordset->Fields->GetItem(_T("sync_id"))->Value;
+            if (vtsync_id.vt != VT_NULL) {
+                sync_id = CStringToAnsi((LPCTSTR)((_bstr_t)vtsync_id.bstrVal));
+            }
+        }
+        if (pRecordset) pRecordset->Close();
+    }
+    catch (_com_error& e)
+    {
+        TRACE(_T("HATA: DeleteRecord - sync_id çekilemedi (işlem devam edecek): %s\n"), (LPCTSTR)e.Description());
+    }
+
+
+    // 3. SOFT DELETE SQL Sorgusunu Oluştur (UPDATE ile işaretle)
+    CString nowUtc = GetCurrentIsoUtc(); // Güncel UTC zaman damgası
+    CString strSQL;
+    strSQL.Format(_T("UPDATE [%s] SET Deleted = TRUE, Updated_At = '%s' WHERE [%s] = '%s';"),
+        (LPCTSTR)cleanTableName,
+        (LPCTSTR)EscapeSQLString(nowUtc),
+        (LPCTSTR)codeField,
+        (LPCTSTR)EscapeSQLString(code));
+
+    TRACE(_T("DeleteRecord SQL (Soft Delete): %s\n"), strSQL);
+
+    // 4. Sorguyu çalıştır
+    if (!ExecuteSQL(strSQL))
+    {
+        TRACE(_T("DeleteRecord (Soft Delete) başarısız! SQL: %s\n"), strSQL);
+        return false;
+    }
+
+    // 5. SyncBridge'e Bildirim Gönder
+    if (m_pSync && !sync_id.empty())
+    {
+        nlohmann::json rowData;
+        rowData["sync_id"] = sync_id;
+        rowData["Updated_At"] = CStringToAnsi(nowUtc);
+        rowData["deleted"] = true; // JSON'a boolean true olarak gönder
+
+        m_pSync->OnLocalChange(CStringToAnsi(cleanTableName), "DELETE", rowData);
+    }
+
+    // Başarılı
+    TRACE(_T("'%s' tablosundan '%s' kaydı başarıyla SOFT DELETE edildi.\n"), cleanTableName, code);
+    return true;
+}
+/****************************************************/
+// DatabaseManager.cpp
+// YENİ: Toplu güncelleme metodu
+// DatabaseManager.cpp
+
+bool DatabaseManager::UpdateCustomersStatusBulk(const std::vector<CString>& cariCodes, const CString& statusID)
+{
+    if (!IsConnected() || cariCodes.empty()) return false;
+
+    // 1. Senkronizasyon için UTC Zaman Damgasını Al
+    CString nowUtc = GetCurrentIsoUtc();
+
+    CString strINClause = _T("");
+
+    // 1. Cari Kod listesini 'CODE1','CODE2',... formatına dönüştür
+    for (const CString& code : cariCodes)
+    {
+        // SQL Injection riskine karşı kaçış işlemi zorunludur.
+        CString escapedCode = EscapeSQLString(code);
+        strINClause.AppendFormat(_T("'%s',"), (LPCTSTR)escapedCode);
+    }
+
+    // Sondaki virgülden kurtul
+    strINClause.TrimRight(_T(','));
+
+    // Güvenli string formatları
+    CString escapedStatusID = EscapeSQLString(statusID);
+    CString escapedNowUtc = EscapeSQLString(nowUtc);
+
+    // 2. 🌟 KRİTİK GÜNCELLEME: Calisma_Durumu VE Updated_At alanlarını güncelle 🌟
+    CString strSQL;
+    strSQL.Format(
+        _T("UPDATE Customer SET Calisma_Durumu = '%s', Updated_At = '%s' WHERE Cari_Kod IN (%s)"),
+        (LPCTSTR)escapedStatusID, // Yeni durum
+        (LPCTSTR)escapedNowUtc,   // 🌟 Updated_At değeri
+        (LPCTSTR)strINClause      // Güncellenecek Cari Kod listesi
+    );
+
+    // 3. ExecuteSQL ile işlemi yap
+    if (ExecuteSQL(strSQL))
+    {
+        // 4. 🌟 KRİTİK EKLENTİ: SyncBridge'e Tüm Değişiklikleri Bildir 🌟
+        if (m_pSync)
+        {
+            // Toplu işlem olduğu için, her bir Cari Kod için ayrı bildirim gönderilmelidir.
+            for (const CString& code : cariCodes)
+            {
+                nlohmann::json rowData;
+
+                // Sync metadata (Cari_Kod = sync_id varsayımıyla)
+                rowData["sync_id"] = CStringToAnsi(code);
+                rowData["Updated_At"] = CStringToAnsi(nowUtc);
+
+                // Güncellenen tekil alanı ekle
+                rowData["Calisma_Durumu"] = CStringToAnsi(statusID);
+                rowData["deleted"] = false;
+
+                // SyncBridge'e bildir: "Customer" tablosunda "UPSERT" (Güncelle) yapıldı.
+                m_pSync->OnLocalChange("Customer", "UPSERT", rowData);
+            }
+        }
+
+        // 5. Zamanlama Çözümü: Veritabanını hemen senkronize et
+        if (IConnectionPtr != NULL)
+        {
+            IConnectionPtr->Close();
+            IConnectionPtr->Open((_bstr_t)GetConnectionString(), _bstr_t(""), _bstr_t(""), adConnectUnspecified);
+        }
+
+        TRACE(_T("%d adet müşterinin çalışma durumu %s olarak güncellendi.\n"), cariCodes.size(), statusID);
+        return true;
+    }
+    return false;
+}
+
+
+bool DatabaseManager::EnsureConnection()
+{
+    // Bağlantı zaten açıksa, hiçbir şey yapma.
+    if (IConnectionPtr != NULL && IConnectionPtr->State == adStateOpen)
+    {
+        return true;
+    }
+
+    // Bağlantı kapalıysa, InitializeDatabase'teki açma mantığını kullan
+    try
+    {
+        // COM nesneleri var mı kontrol et (yoksa yeniden oluştur)
+        if (IConnectionPtr == NULL)
+        {
+            IConnectionPtr.CreateInstance(__uuidof(Connection));
+        }
+
+        // InitializeDatabase'teki adımları tekrar uygula (Close'a gerek yok, zaten kapalı)
+        IConnectionPtr->Provider = L"Microsoft.ACE.OLEDB.12.0";
+        IConnectionPtr->ConnectionString = (_bstr_t)GetConnectionString();
+        IConnectionPtr->Open(_bstr_t(""), _bstr_t(""), _bstr_t(""), adConnectUnspecified);
+
+        // Global Recordset'i yeniden ata (eğer kullanılıyorsa)
+        if (IRecordsetPtr != NULL) {
+            IRecordsetPtr->PutRefActiveConnection(IConnectionPtr);
+        }
+
+        TRACE(_T("ADO bağlantısı zorla yeniden kuruldu.\n"));
+        return true;
+    }
+    catch (_com_error& e)
+    {
+        // Hata yönetimi burada kalabilir
+        TRACE(_T("HATA: Zorunlu bağlantı kurulamadı: %s\n"), (LPCTSTR)e.Description());
+        return false;
+    }
+}
+
+
+
+
+
+
+// src/dataIsMe.cpp
+
+CString DatabaseManager::VariantToCString(const _variant_t& v)
+{
+    switch (v.vt)
+    {
+    case VT_NULL:
+    case VT_EMPTY: return _T("");
+    case VT_BSTR:  return CString((LPCWSTR)v.bstrVal);
+    case VT_I2:    return CString(std::to_wstring((int)v.iVal).c_str());
+    case VT_I4:    return CString(std::to_wstring((int)v.lVal).c_str());
+
+        // --- DÜZELTME BURADA ---
+    case VT_R4:
+    case VT_R8:
+    {
+        double dVal = (v.vt == VT_R4) ? v.fltVal : v.dblVal;
+        CString s;
+        // En fazla 2 ondalık basamak göster
+        s.Format(_T("%.2f"), dVal);
+
+        // Sonundaki gereksiz sıfırları sil (350.50 -> 350.5)
+        // Eğer tam sayıysa noktayı da sil (350. -> 350)
+        s.TrimRight(_T('0'));
+        s.TrimRight(_T('.'));
+        return s;
+    }
+    // -----------------------
+
+    case VT_BOOL:  return v.boolVal ? _T("Evet") : _T("Hayır");
+    case VT_DATE: {
+        SYSTEMTIME st{}; VariantTimeToSystemTime(v.date, &st);
+        CString s; s.Format(_T("%04d-%02d-%02d %02d:%02d"), st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute);
+        return s;
+    }
+    default:
+        try { _bstr_t bs(v); return CString((LPCWSTR)bs); }
+        catch (...) { return _T(""); }
+    }
+}
+
+
+bool DatabaseManager::FetchRecordFieldsWithCustomer(const CString& tableName,
+    const CString& codeField,
+    const CString& codeValue,
+    std::vector<std::pair<CString, CString>>& outFields)
+{
+    outFields.clear();
+    if (!IsConnected()) { InitializeDatabase(); if (!IsConnected()) return false; }
+
+    try
+    {
+        // 1. KRİTİK GÜNCELLEME: Ana tabloyu oku (Deleted = FALSE filtresi eklendi)
+        CString sql;
+        sql.Format(L"SELECT * FROM [%s] WHERE [%s]='%s' AND Deleted = FALSE",
+            (LPCWSTR)tableName, (LPCWSTR)codeField, (LPCWSTR)EscapeSQLString(codeValue));
+
+        _RecordsetPtr rs = IConnectionPtr->Execute((_bstr_t)sql, NULL, adCmdText);
+        if (!rs || rs->EndOfFile)
+            return false; // Kayıt bulunamadı veya silinmiş
+
+        CString cariKod;
+
+        long fldCount = rs->Fields->GetCount();
+        outFields.emplace_back(L"=== MÜLK DETAYLARI ===", L"");
+
+        for (long i = 0; i < fldCount; ++i)
+        {
+            _bstr_t name = rs->Fields->GetItem(i)->GetName();
+            _variant_t val = rs->Fields->GetItem(i)->GetValue();
+
+            CString key = (LPCWSTR)name;
+            CString value = VariantToCString(val);
+            outFields.emplace_back(key, value);
+
+            // cari alanını yakala
+            if (key.CompareNoCase(L"Cari_Kod") == 0 || key.CompareNoCase(L"Cari_Kod") == 0)
+                cariKod = value;
+        }
+
+        rs->Close();
+
+        // --- 2️⃣ Cari bilgilerini ekle (Müşteri tablosunda da Deleted = FALSE filtresi önerilir) ---
+        if (!cariKod.IsEmpty())
+        {
+            CString sqlCari;
+            // KRİTİK GÜNCELLEME: Müşteri kaydının da silinip silinmediğini kontrol et
+            sqlCari.Format(L"SELECT * FROM Customer WHERE Cari_Kod='%s' AND Deleted = FALSE", (LPCWSTR)EscapeSQLString(cariKod));
+            _RecordsetPtr rsCari = IConnectionPtr->Execute((_bstr_t)sqlCari, NULL, adCmdText);
+
+            if (rsCari && !rsCari->EndOfFile)
+            {
+                outFields.emplace_back(L"", L"");
+                outFields.emplace_back(L"=== MÜŞTERİ BİLGİLERİ ===", L"");
+
+                long fldCari = rsCari->Fields->GetCount();
+                for (long i = 0; i < fldCari; ++i)
+                {
+                    _bstr_t name = rsCari->Fields->GetItem(i)->GetName();
+                    _variant_t val = rsCari->Fields->GetItem(i)->GetValue();
+                    CString k = (LPCWSTR)name;
+                    CString v = VariantToCString(val);
+                    outFields.emplace_back(k, v);
+                }
+                rsCari->Close();
+            }
+        }
+    }
+    catch (_com_error& e)
+    {
+        CString msg;
+        msg.Format(L"FetchRecordFieldsWithCustomer hata: %s", (LPCWSTR)e.Description());
+        ::MessageBox(NULL, msg, L"DB Hatası", MB_ICONERROR);
+        return false;
+    }
+
+    return true;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+bool DatabaseManager::FetchRecordFields(const CString& tableName,
+    const CString& codeField,
+    const CString& codeValue,
+    std::vector<std::pair<CString, CString>>& outFields)
+{
+    outFields.clear();
+    if (!IsConnected()) { InitializeDatabase(); if (!IsConnected()) return false; }
+
+    CString sql;
+    // KRİTİK GÜNCELLEME: Deleted = FALSE filtresi eklendi.
+    sql.Format(L"SELECT * FROM %s WHERE %s = '%s' AND Deleted = FALSE",
+        (LPCWSTR)tableName, (LPCWSTR)codeField,
+        (LPCWSTR)EscapeSQLString(codeValue));
+
+    try
+    {
+        _RecordsetPtr rs = IConnectionPtr->Execute((_bstr_t)sql, NULL, adCmdText);
+        if (rs && !rs->EndOfFile)
+        {
+            long count = rs->Fields->GetCount();
+            for (long i = 0; i < count; ++i)
+            {
+                _bstr_t name = rs->Fields->GetItem(i)->GetName();
+                _variant_t val = rs->Fields->GetItem(i)->GetValue();
+                CString k = (LPCWSTR)name;
+                CString v = VariantToCString(val);
+                outFields.emplace_back(k, v);
+            }
+            rs->Close();
+            return true;
+        }
+        if (rs) rs->Close();
+    }
+    catch (_com_error& e)
+    {
+        CString msg; msg.Format(L"FetchRecordFields hata: %s", (LPCWSTR)e.Description());
+        ::MessageBox(NULL, msg, L"DB Hatası", MB_ICONERROR);
+    }
+    return false;
+}
+
+
+
+
+std::vector<Appointment_cstr> DatabaseManager::GetAppointmentsByCustomer(const CString& custID)
+{
+    std::vector<Appointment_cstr> list;
+    if (!EnsureConnection()) return list;
+
+    try {
+        // Tarihe göre tersten sırala (En yeni en üstte)
+        CString sql;
+        sql.Format(_T("SELECT * FROM Appointments WHERE CustomerID='%s' AND Deleted=FALSE ORDER BY AppDate DESC"),
+            (LPCTSTR)EscapeSQLString(custID));
+
+        _RecordsetPtr rs;
+        rs.CreateInstance(__uuidof(Recordset));
+        rs->Open((_variant_t)sql, _variant_t((IDispatch*)IConnectionPtr, true), adOpenStatic, adLockReadOnly, adCmdText);
+
+        while (!rs->EndOfFile) {
+            Appointment_cstr app;
+            // Recordset'i struct'a doldur (Otomatik)
+            long cnt = rs->Fields->Count;
+            for (long i = 0; i < cnt; ++i) {
+                CString fName = (LPCWSTR)rs->Fields->Item[i]->Name;
+                CString fVal = VariantToCString(rs->Fields->Item[i]->Value);
+                SetFieldByStringName(app, fName, fVal);
+            }
+            list.push_back(app);
+            rs->MoveNext();
+        }
+        rs->Close();
+    }
+    catch (...) {}
+    return list;
+}
+
+
+
+
+// ============================================================================
+//  Sahibinden / Bulk Import - Dedupe & Matching Helpers
+// ============================================================================
+
+static CString NormalizePhoneDigitsOnly_DBM(const CString& in)
+{
+    CString s = in;
+    s.Trim();
+
+    CString out; // Win32++ CString: Preallocate yok
+
+    for (int i = 0; i < s.GetLength(); ++i)
+    {
+        const TCHAR ch = s[i];
+        if (ch >= _T('0') && ch <= _T('9'))
+        {
+            // out += ch;  // bu da olur ama daha temiz:
+            CString oneChar(ch);
+            out += oneChar;
+        }
+    }
+
+    // Best-effort: 90XXXXXXXXXX -> 0XXXXXXXXXX (TR)
+    if (out.GetLength() >= 12 && out.Left(2) == _T("90") && out.Mid(2, 1) == _T("5"))
+        out = _T("0") + out.Mid(2);
+
+    return out;
+}
+
+bool DatabaseManager::FindCustomerByPhoneLike(const CString& inputPhone, CString& outCariKod)
+{
+    outCariKod = _T("");
+    if (!EnsureConnection())
+        return false;
+
+    CString norm = NormalizePhoneDigitsOnly_DBM(inputPhone);
+    if (norm.IsEmpty())
+        return false;
+
+    // Son 10 hane (TR GSM icin en stabil)
+    CString key = norm;
+    if (key.GetLength() > 10)
+        key = key.Right(10);
+
+    CString like;
+    like.Format(_T("%%%s%%"), (LPCTSTR)EscapeSQLString(key));
+
+    CString sql;
+    sql.Format(_T("SELECT TOP 25 Cari_Kod, Telefon, Telefon2 FROM Customer ")
+               _T("WHERE Deleted = FALSE AND ((Telefon LIKE '%s') OR (Telefon2 LIKE '%s'))"),
+               (LPCTSTR)like, (LPCTSTR)like);
+
+    _RecordsetPtr rs;
+    rs.CreateInstance(__uuidof(Recordset));
+
+    try
+    {
+        rs->Open((_variant_t)sql, _variant_t((IDispatch*)IConnectionPtr, true),
+                 adOpenForwardOnly, adLockReadOnly, adCmdText);
+
+        while (!rs->EndOfFile)
+        {
+            CString cari = VariantToCString(rs->Fields->GetItem("Cari_Kod")->Value);
+            CString t1   = VariantToCString(rs->Fields->GetItem("Telefon")->Value);
+            CString t2   = VariantToCString(rs->Fields->GetItem("Telefon2")->Value);
+
+            CString n1 = NormalizePhoneDigitsOnly_DBM(t1);
+            CString n2 = NormalizePhoneDigitsOnly_DBM(t2);
+
+            CString k1 = n1, k2 = n2;
+            if (k1.GetLength() > 10) k1 = k1.Right(10);
+            if (k2.GetLength() > 10) k2 = k2.Right(10);
+
+            if ((!k1.IsEmpty() && k1 == key) || (!k2.IsEmpty() && k2 == key))
+            {
+                outCariKod = cari;
+                rs->Close();
+                return true;
+            }
+
+            rs->MoveNext();
+        }
+
+        rs->Close();
+    }
+    catch (...)
+    {
+        try { if (rs && rs->State == adStateOpen) rs->Close(); } catch (...) {}
+        return false;
+    }
+
+    return false;
+}
+
+bool DatabaseManager::ExistsPropertyByListing(const CString& websiteName, const CString& listingNo)
+{
+    if (websiteName.IsEmpty() || listingNo.IsEmpty())
+        return false;
+
+    if (!EnsureConnection())
+        return false;
+
+    const CString tables[] = {
+        TABLE_NAME_HOME,
+        TABLE_NAME_LAND,
+        TABLE_NAME_FIELD,
+        TABLE_NAME_VINEYARD,
+        TABLE_NAME_VILLA,
+        TABLE_NAME_COMMERCIAL
+    };
+
+    CString safeWeb = EscapeSQLString(websiteName);
+    CString safeNo  = EscapeSQLString(listingNo);
+
+    for (const auto& t : tables)
+    {
+        try
+        {
+            CString sql;
+            sql.Format(_T("SELECT COUNT(*) AS Cnt FROM [%s] WHERE Deleted = FALSE AND WebsiteName = '%s' AND ListingNo = '%s'"),
+                       (LPCTSTR)t, (LPCTSTR)safeWeb, (LPCTSTR)safeNo);
+
+            _RecordsetPtr rs;
+            rs.CreateInstance(__uuidof(Recordset));
+
+            rs->Open((_variant_t)sql, _variant_t((IDispatch*)IConnectionPtr, true),
+                     adOpenForwardOnly, adLockReadOnly, adCmdText);
+
+            long cnt = 0;
+            if (!rs->EndOfFile)
+            {
+                _variant_t v = rs->Fields->GetItem("Cnt")->Value;
+                if (v.vt != VT_NULL && v.vt != VT_EMPTY)
+                    cnt = (long)v;
+            }
+            rs->Close();
+
+            if (cnt > 0)
+                return true;
+        }
+        catch (...)
+        {
+            // Bazı tablolar ListingNo/WebsiteName alanını farklı tutabilir;
+            // hata verirse bir sonraki tabloya devam ediyoruz.
+        }
+    }
+
+    return false;
+}
