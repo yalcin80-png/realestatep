@@ -860,8 +860,35 @@ INT_PTR CHomeDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 
                 // Populate dialog fields with the fetched data
                 if (success && !dataMap.empty()) {
+                    // Debug: Log how many fields were extracted
+                    CString debugMsg;
+                    debugMsg.Format(_T("Parsed %d fields from JSON"), (int)dataMap.size());
+                    SetDlgItemText(IDC_EDIT_NOTE_INTERNAL, debugMsg);
+                    
                     // Use the database manager's bind method to populate UI
                     m_dbManager.Bind_Data_To_UI(this, TABLE_NAME_HOME, dataMap);
+                    
+                    // Also manually set key fields as fallback
+                    if (!dataMap[_T("ListingNo")].IsEmpty())
+                        SetDlgItemText(IDC_EDIT_ILAN_NO, dataMap[_T("ListingNo")]);
+                    if (!dataMap[_T("Price")].IsEmpty())
+                        SetDlgItemText(ID_EDIT_FIYAT, dataMap[_T("Price")]);
+                    if (!dataMap[_T("City")].IsEmpty())
+                        SetDlgItemText(ID_COMBO_CITY, dataMap[_T("City")]);
+                    if (!dataMap[_T("District")].IsEmpty())
+                        SetDlgItemText(ID_COMBO_DISTRICT, dataMap[_T("District")]);
+                    if (!dataMap[_T("RoomCount")].IsEmpty())
+                        SetDlgItemText(ID_EDIT_ODASAYISI, dataMap[_T("RoomCount")]);
+                    if (!dataMap[_T("NetArea")].IsEmpty())
+                        SetDlgItemText(ID_EDIT_NETM2, dataMap[_T("NetArea")]);
+                    if (!dataMap[_T("GrossArea")].IsEmpty())
+                        SetDlgItemText(ID_EDIT_BRUTM2, dataMap[_T("GrossArea")]);
+                    if (!dataMap[_T("Floor")].IsEmpty())
+                        SetDlgItemText(ID_EDIT_KAT, dataMap[_T("Floor")]);
+                    if (!dataMap[_T("BuildingAge")].IsEmpty())
+                        SetDlgItemText(ID_EDIT_BINAYASI, dataMap[_T("BuildingAge")]);
+                    if (!dataMap[_T("ListingURL")].IsEmpty())
+                        SetDlgItemText(IDC_EDIT_URL, dataMap[_T("ListingURL")]);
                     
                     // Also populate feature pages if needed
                     m_featuresPage1.LoadFromMap(dataMap);
@@ -869,12 +896,29 @@ INT_PTR CHomeDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
                     
                     // Clear the progress message and show success
                     SetDlgItemText(IDC_EDIT_NOTE_INTERNAL, _T(""));
-                    MessageBox(_T("İlan bilgileri başarıyla alındı ve dialog'a dolduruldu!\n\nKAYDET butonuna basarak veritabanına kaydedebilirsiniz."), 
-                               _T("Başarılı"), MB_ICONINFORMATION);
+                    
+                    // Show detailed success message with sample data
+                    CString successMsg = _T("İlan bilgileri başarıyla alındı ve dialog'a dolduruldu!\n\n");
+                    if (!dataMap[_T("ListingNo")].IsEmpty())
+                        successMsg += _T("İlan No: ") + dataMap[_T("ListingNo")] + _T("\n");
+                    if (!dataMap[_T("City")].IsEmpty())
+                        successMsg += _T("Şehir: ") + dataMap[_T("City")] + _T("\n");
+                    if (!dataMap[_T("Price")].IsEmpty())
+                        successMsg += _T("Fiyat: ") + dataMap[_T("Price")] + _T("\n");
+                    successMsg += _T("\nKAYDET butonuna basarak veritabanına kaydedebilirsiniz.");
+                    
+                    MessageBox(successMsg, _T("Başarılı"), MB_ICONINFORMATION);
                 } else {
                     SetDlgItemText(IDC_EDIT_NOTE_INTERNAL, _T(""));
-                    MessageBox(_T("İlan bilgileri alınamadı! Lütfen ilan numarasını kontrol edin."), 
-                               _T("Hata"), MB_ICONERROR);
+                    
+                    // More detailed error message
+                    CString errorMsg;
+                    if (!success) {
+                        errorMsg = _T("JSON parse hatası! İlan bilgileri alınamadı.");
+                    } else {
+                        errorMsg = _T("Veri boş geldi! Lütfen ilan numarasını kontrol edin.");
+                    }
+                    MessageBox(errorMsg, _T("Hata"), MB_ICONERROR);
                 }
             });
         });
