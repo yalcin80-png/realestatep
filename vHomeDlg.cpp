@@ -347,20 +347,8 @@ void CHomeDialog::OnFetchListingClicked() {
     
     MessageBox(msg, _T("İlan Bilgisi Nasıl Alınır?"), MB_ICONINFORMATION);
 
-    // NOT: Tam implementasyon için gerekli adımlar:
-    // SEÇENEK A: Mevcut SahibindenImportDlg'yi kullan (ama save yapıyor)
-    // SEÇENEK B: Yeni bir non-modal browser dialog oluştur:
-    //   1. WebView2 ile sayfayı aç: https://www.sahibinden.com/ilan/[listingNo]
-    //   2. JavaScript ile gaPageViewTrackingJson@data-json'dan JSON'u al
-    //   3. HTML source'u al
-    //   4. SahibindenImporter parsing logic'ini kullan ama SaveToDatabase çağırma:
-    //      - ParseTrackingJson ile SahibindenListingPayload doldur
-    //      - ExtractFeaturesFromHtml ile HTML'den özellikleri al
-    //      - Payload'ı Home_cstr'a dönüştür
-    //   5. Dönüştürülen veriyi map'e çevir
-    //   6. m_dbManager.Bind_Data_To_UI(this, TABLE_NAME_HOME, dataMap) ile kontrollere yükle
-    //   7. m_featuresPage1.LoadFromMap() ve m_featuresPage2.LoadFromMap() çağır
-    //   8. Kullanıcı KAYDET'e basarsa OnOK() ile DB'ye kaydet
+    // TODO: Future enhancement - implement WebView2-based automatic fetching
+    // See: SahibindenImportDlg for reference implementation
 }
 
 // ============================================================================
