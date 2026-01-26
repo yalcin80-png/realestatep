@@ -3576,7 +3576,8 @@ void CListCustomerView::DrawCardItemProfessional(LPNMLVCUSTOMDRAW pLVCD, CDC& dc
     RectF eyeOuter(eyeMidX - 5, eyeMidY - 3, 10, 6);
     g.DrawEllipse(&eyePen, eyeOuter);
     SolidBrush pupilBrush(Color(alpha, 255, 255, 255));
-    g.FillEllipse(&pupilBrush, eyeMidX - 2, eyeMidY - 2, 4, 4);
+    RectF pupilRect(eyeMidX - 2, eyeMidY - 2, 4, 4);
+    g.FillEllipse(&pupilBrush, pupilRect);
     
     // ---- Button 2: Edit (✎) ----
     startX -= (btnSize + btnSpacing);
