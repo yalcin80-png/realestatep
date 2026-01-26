@@ -483,6 +483,8 @@ void CPreviewPanel::OnPrint()
 
                 // Setup GdiPlusDrawContext for printer with proper page size
                 GdiPlusDrawContext ctx;
+                
+                // A4 dimensions (matching PreviewItem.h constants)
                 const double A4_WIDTH = 2100.0;  // Logical A4 width
                 const double A4_HEIGHT = 2970.0; // Logical A4 height
                 

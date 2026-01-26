@@ -178,11 +178,13 @@ inline bool DataMapper::GetBoolValue(
     value.MakeLower();
     value.Trim();
     
+    // Supported boolean true values: "1", "true", "yes", "evet" (Turkish), "x"
+    // This list can be extended as needed
     return (value == _T("1") || 
             value == _T("true") || 
             value == _T("yes") || 
-            value == _T("evet") || 
-            value == _T("x"));
+            value == _T("evet") ||  // Turkish: "yes"
+            value == _T("x"));      // Checkbox marker
 }
 
 #endif // DATAMAPPER_H
