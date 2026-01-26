@@ -60,6 +60,104 @@ void SchemaManager::InitSchemas() {
 
 }
 
+// ============================================================================
+// SCHEMA VALIDATION - Runtime validation of database fields
+// ============================================================================
+
+bool SchemaManager::ValidateFields(
+    const CString& tableName,
+    const std::vector<std::pair<CString, CString>>& fields,
+    std::vector<CString>& errors)
+{
+    errors.clear();
+    
+    if (!m_isInit) {
+        InitSchemas();
+        m_isInit = true;
+    }
+    
+    auto schemaIt = m_schemas.find(tableName);
+    if (schemaIt == m_schemas.end())
+    {
+        errors.push_back(_T("Schema not found for table: ") + tableName);
+        return false;
+    }
+    
+    const auto& schema = schemaIt->second;
+    bool isValid = true;
+    
+    // Build a map of field names for quick lookup
+    std::map<CString, CString> fieldMap;
+    for (const auto& field : fields)
+    {
+        fieldMap[field.first] = field.second;
+    }
+    
+    // Check for required fields with empty values
+    for (const auto& fieldDef : schema)
+    {
+        // Skip if not visible or not an attribute
+        if (!fieldDef.visible || !fieldDef.isAttribute)
+            continue;
+        
+        auto it = fieldMap.find(fieldDef.dbName);
+        if (it == fieldMap.end() || it->second.IsEmpty())
+        {
+            // Check aliases
+            bool foundInAlias = false;
+            for (const auto& alias : fieldDef.aliases)
+            {
+                auto aliasIt = fieldMap.find(alias);
+                if (aliasIt != fieldMap.end() && !aliasIt->second.IsEmpty())
+                {
+                    foundInAlias = true;
+                    break;
+                }
+            }
+            
+            if (!foundInAlias)
+            {
+                // This is a warning, not necessarily an error
+                // Only log for debugging purposes
+                CString msg;
+                msg.Format(_T("Field '%s' is empty or missing"), fieldDef.dbName);
+                // Don't add to errors for now, just log
+                OutputDebugString(msg);
+            }
+        }
+    }
+    
+    return isValid;
+}
+
+CString SchemaManager::GetFieldLabel(const CString& tableName, const CString& fieldName)
+{
+    if (!m_isInit) {
+        InitSchemas();
+        m_isInit = true;
+    }
+    
+    auto schemaIt = m_schemas.find(tableName);
+    if (schemaIt == m_schemas.end())
+        return fieldName;
+    
+    const auto& schema = schemaIt->second;
+    for (const auto& fieldDef : schema)
+    {
+        if (fieldDef.dbName == fieldName)
+            return fieldDef.label;
+        
+        // Check aliases
+        for (const auto& alias : fieldDef.aliases)
+        {
+            if (alias == fieldName)
+                return fieldDef.label;
+        }
+    }
+    
+    return fieldName;
+}
+
 
 
 

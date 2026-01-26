@@ -25,7 +25,10 @@ void GdiOfferLetterLayout::SetData(const std::vector<std::pair<CString, CString>
 std::wstring GdiOfferLetterLayout::GetVal(const std::wstring& key)
 {
     auto it = m_data.find(key);
-    return (it != m_data.end()) ? it->second : L"....................";
+    if (it != m_data.end() && !it->second.empty()) {
+        return it->second;
+    }
+    return L""; // Boş string döndür, placeholder değil
 }
 
 FontDesc GdiOfferLetterLayout::MakeFont(const std::wstring& family, float size, bool bold) {

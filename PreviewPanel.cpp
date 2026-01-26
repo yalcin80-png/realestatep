@@ -10,6 +10,8 @@
 #include "HaruDrawContext.h"
 #include "JsonFormRenderer.h"
 #include "RenderConfig.h"
+#include "DataMapper.h"
+#include "PrintPreviewHelper.h"
 
 #include <memory>
 #include <vector>
@@ -70,12 +72,8 @@ static bool TryRenderContractWithJson(    IDrawContext& ctx,    const PreviewIte
     }
 
     // Veriyi JsonFormRenderer'n bekledii forma evir (map<CString,CString>)
-    std::map<CString, CString> data;
-    for (const auto& kv : item.fields)
-    {
-        // Ayn key birden fazla kez gelirse sonuncusu geerli olur
-        data[kv.first] = kv.second;
-    }
+    // Use DataMapper for better field mapping
+    std::map<CString, CString> data = DataMapper::MapFields(item.fields);
 
     // stersen burada ekstra normalize de yapabilirsin:
     // rn: data[_T("OwnerName")] = sahiplere ait isim vs.
@@ -427,7 +425,7 @@ bool CPreviewPanel::SaveBitmapToPNG(HBITMAP hBmp, const CString& filePath)
 }
 
 // ============================================================================
-// YAZDIRMA (PRINT) - LEKLEME DESTEKL
+// YAZDIRMA (PRINT) - LEKLEME DESTEKL VE HATA YÖNETM
 // ============================================================================
 void CPreviewPanel::OnPrint()
 {
@@ -435,13 +433,31 @@ void CPreviewPanel::OnPrint()
     if (printDlg.DoModal(*this) != IDOK) return;
 
     HDC hPrinterDC = printDlg.GetPrinterDC();
-    if (!hPrinterDC) return;
+    if (!hPrinterDC)
+    {
+        MessageBox(L"Yazıcı bağlantısı kurulamadı.", L"Hata", MB_ICONERROR);
+        return;
+    }
+
+    // Validate printer DC
+    if (!PrintPreviewHelper::ValidatePrinterDC(hPrinterDC))
+    {
+        MessageBox(L"Geçersiz yazıcı cihazı.", L"Hata", MB_ICONERROR);
+        return;
+    }
 
     CDC dcPrinter;
     dcPrinter.Attach(hPrinterDC);
 
     DOCINFO di = { sizeof(DOCINFO), L"Emlak Belgesi" };
-    dcPrinter.StartDoc(&di);
+    if (dcPrinter.StartDoc(&di) <= 0)
+    {
+        CString errMsg = PrintPreviewHelper::FormatPrintError(::GetLastError());
+        MessageBox(errMsg, L"Hata", MB_ICONERROR);
+        return;
+    }
+
+    bool printSuccess = true;
 
     try
     {
@@ -453,24 +469,67 @@ void CPreviewPanel::OnPrint()
 
             for (int i = 1; i <= pages; ++i)
             {
-                dcPrinter.StartPage();
-
-                // GDI+ Context'i Printer DC ile balat
-                // GdiPlusDrawContext iindeki SetLogicalPageSize, 
-                // A4 boyutunu kada otomatik sdracak (Scale yapacak).
-                GdiPlusDrawContext ctx;
-                if (ctx.Begin(hPrinterDC)) {
-                    layout->Render(ctx, i);
-                    ctx.End();
+                if (dcPrinter.StartPage() <= 0)
+                {
+                    printSuccess = false;
+                    break;
                 }
 
-                dcPrinter.EndPage();
+                // Setup GdiPlusDrawContext for printer with proper page size
+                GdiPlusDrawContext ctx;
+                const double A4_WIDTH = 2100.0;  // Logical A4 width
+                const double A4_HEIGHT = 2970.0; // Logical A4 height
+                
+                if (PrintPreviewHelper::SetupPrintContext(ctx, hPrinterDC, A4_WIDTH, A4_HEIGHT))
+                {
+                    try
+                    {
+                        layout->Render(ctx, i);
+                    }
+                    catch (const std::exception& e)
+                    {
+                        // Log error but continue
+                        CString msg;
+                        msg.Format(L"Sayfa %d render hatası: %S", i, e.what());
+                        OutputDebugString(msg);
+                        printSuccess = false;
+                    }
+                    ctx.End();
+                }
+                else
+                {
+                    printSuccess = false;
+                }
+
+                if (dcPrinter.EndPage() <= 0)
+                {
+                    printSuccess = false;
+                    break;
+                }
             }
         }
     }
-    catch (...) {
-        MessageBox(L"Yazdrma srasnda hata olutu.", L"Hata", MB_ICONERROR);
+    catch (const std::exception& e)
+    {
+        CString msg;
+        msg.Format(L"Yazdırma sırasında kritik hata: %S", e.what());
+        MessageBox(msg, L"Hata", MB_ICONERROR);
+        printSuccess = false;
+    }
+    catch (...)
+    {
+        MessageBox(L"Yazdırma sırasında bilinmeyen hata oluştu.", L"Hata", MB_ICONERROR);
+        printSuccess = false;
     }
 
     dcPrinter.EndDoc();
+    
+    if (printSuccess)
+    {
+        MessageBox(L"Yazdırma tamamlandı.", L"Bilgi", MB_OK | MB_ICONINFORMATION);
+    }
+    else
+    {
+        MessageBox(L"Yazdırma tamamlanamadı. Bazı sayfalar yazdırılamış olabilir.", L"Uyarı", MB_OK | MB_ICONWARNING);
+    }
 }

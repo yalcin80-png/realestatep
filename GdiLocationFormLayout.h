@@ -21,11 +21,13 @@ public:
 private:
     std::map<CString, CString> m_data;
 
-    // Yardımcı: Veriyi güvenli çek
+    // Yardımcı: Veriyi güvenli çek (null/empty kontrolü ile)
     CString GetVal(const CString& key) {
         auto it = m_data.find(key);
-        if (it != m_data.end()) return it->second;
-        return _T("");
+        if (it != m_data.end() && !it->second.IsEmpty()) {
+            return it->second;
+        }
+        return _T(""); // Boş string döndür, placeholder değil
     }
 
     // Yardımcı: Font Oluşturucu

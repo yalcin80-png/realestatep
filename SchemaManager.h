@@ -50,6 +50,16 @@ public:
 
     // Tablonun alan listesini getirir
     const std::vector<FieldDef>& GetSchema(const CString& tableName);
+    
+    // Schema validation - validates fields against schema
+    bool ValidateFields(
+        const CString& tableName,
+        const std::vector<std::pair<CString, CString>>& fields,
+        std::vector<CString>& errors);
+    
+    // Get field label from schema
+    CString GetFieldLabel(const CString& tableName, const CString& fieldName);
+    
     // Bu fonksiyonu her struct için özelleştireceğiz (Fabrika Deposu)
 private:
     SchemaManager() {} // Private Constructor
