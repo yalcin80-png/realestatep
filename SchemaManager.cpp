@@ -117,12 +117,12 @@ bool SchemaManager::ValidateFields(
             
             if (!foundInAlias)
             {
-                // This is a warning, not necessarily an error
-                // Only log for debugging purposes
+                // Field is missing or empty - this is a validation issue
                 CString msg;
-                msg.Format(_T("Field '%s' is empty or missing"), fieldDef.dbName);
-                // Don't add to errors for now, just log
-                OutputDebugString(msg);
+                msg.Format(_T("Field '%s' (%s) is empty or missing"), 
+                    fieldDef.dbName, fieldDef.label);
+                errors.push_back(msg);
+                isValid = false; // Mark as invalid
             }
         }
     }

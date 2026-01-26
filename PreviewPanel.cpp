@@ -74,6 +74,12 @@ static bool TryRenderContractWithJson(    IDrawContext& ctx,    const PreviewIte
     // Veriyi JsonFormRenderer'n bekledii forma evir (map<CString,CString>)
     // Use DataMapper for better field mapping
     std::map<CString, CString> data = DataMapper::MapFields(item.fields);
+    
+    // Optional: Log if data is empty (for debugging)
+    if (data.empty())
+    {
+        OutputDebugString(L"Warning: No data fields available for JSON rendering");
+    }
 
     // stersen burada ekstra normalize de yapabilirsin:
     // rn: data[_T("OwnerName")] = sahiplere ait isim vs.
@@ -425,7 +431,7 @@ bool CPreviewPanel::SaveBitmapToPNG(HBITMAP hBmp, const CString& filePath)
 }
 
 // ============================================================================
-// YAZDIRMA (PRINT) - LEKLEME DESTEKL VE HATA YÖNETM
+// YAZDIRMA (PRINT) - İŞLEME DESTEKLİ VE HATA YÖNETİMİ
 // ============================================================================
 void CPreviewPanel::OnPrint()
 {

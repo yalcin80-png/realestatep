@@ -2,6 +2,7 @@
 #include "JsonFormRenderer.h"
 #include "TemplateLoader.h"
 #include "ThemeConfig.h"
+#include "DataMapper.h"
 #include <algorithm>
 
 JsonFormRenderer::JsonFormRenderer() {}
@@ -292,11 +293,10 @@ int JsonFormRenderer::RenderElement(IDrawContext& ctx, const JElement& el,
             auto it = data.find(el.bindKey.c_str());
             if (it != data.end() && !it->second.IsEmpty())
             {
-                CString v = it->second;
-                v.MakeLower();
-                v.Trim(); // Whitespace temizle
-                if (v == L"1" || v == L"true" || v == L"x" || v == L"yes" || v == L"evet")
-                    checked = true;
+                // Use DataMapper for consistent boolean parsing
+                std::map<CString, CString> tempMap;
+                tempMap[el.bindKey.c_str()] = it->second;
+                checked = DataMapper::GetBoolValue(tempMap, el.bindKey.c_str());
             }
         }
 

@@ -171,18 +171,19 @@ inline bool PrintPreviewHelper::ValidatePrinterDC(HDC hPrinterDC)
     // Check if it's a valid DC
     int tech = ::GetDeviceCaps(hPrinterDC, TECHNOLOGY);
     
-    // Validate it's a printer device
-    if (tech != DT_RASPRINTER)
-    {
-        // Not a raster printer - could be other type, but typically we expect raster
-        // Still allow it to proceed
-    }
+    // Validate printer device types
+    // DT_RASPRINTER (2) - Most common raster printer
+    // DT_PLOTTER (0) - Vector plotter
+    // DT_METAFILE (5) - Metafile output
+    // Accept all printing-capable device types
+    bool isPrinterType = (tech == DT_RASPRINTER || tech == DT_PLOTTER || 
+                         tech == DT_METAFILE);
     
     // Check basic capabilities
     int width = ::GetDeviceCaps(hPrinterDC, HORZRES);
     int height = ::GetDeviceCaps(hPrinterDC, VERTRES);
     
-    return (width > 0 && height > 0);
+    return isPrinterType && (width > 0 && height > 0);
 }
 
 #endif // PRINTPREVIEWHELPER_H
