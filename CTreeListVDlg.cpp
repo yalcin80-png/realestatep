@@ -1452,6 +1452,40 @@ void CMyTreeListView::TriggerAction(int btnType, HTREEITEM hItem)
         OnPreviewCommand();
     }
 }// CMyTreeListView.cpp içinde
+
+// --------------------------------------------------------
+// Gradient Arka Plan Çizimi - Görsel İyileştirme
+// --------------------------------------------------------
+void DrawGradientRect(HDC hdc, const RECT& rect, COLORREF colorStart, COLORREF colorEnd, bool vertical = false)
+{
+    TRIVERTEX vertex[2];
+    vertex[0].x = rect.left;
+    vertex[0].y = rect.top;
+    vertex[0].Red = GetRValue(colorStart) << 8;
+    vertex[0].Green = GetGValue(colorStart) << 8;
+    vertex[0].Blue = GetBValue(colorStart) << 8;
+    vertex[0].Alpha = 0x0000;
+
+    vertex[1].x = rect.right;
+    vertex[1].y = rect.bottom;
+    vertex[1].Red = GetRValue(colorEnd) << 8;
+    vertex[1].Green = GetGValue(colorEnd) << 8;
+    vertex[1].Blue = GetBValue(colorEnd) << 8;
+    vertex[1].Alpha = 0x0000;
+
+    GRADIENT_RECT gRect = { 0, 1 };
+    ::GradientFill(hdc, vertex, 2, &gRect, 1, vertical ? GRADIENT_FILL_RECT_V : GRADIENT_FILL_RECT_H);
+}
+
+// Durum renklerine göre gradient oluşturur (daha yumuşak görünüm)
+COLORREF LightenColor(COLORREF color, int amount = 40)
+{
+    int r = min(255, GetRValue(color) + amount);
+    int g = min(255, GetGValue(color) + amount);
+    int b = min(255, GetBValue(color) + amount);
+    return RGB(r, g, b);
+}
+
 // CMyTreeListView.cpp içinde
 LRESULT CMyTreeListView::OnNotifyReflect(WPARAM wparam, LPARAM lparam)
 {
@@ -1479,20 +1513,26 @@ LRESULT CMyTreeListView::OnNotifyReflect(WPARAM wparam, LPARAM lparam)
 
             UpdateButtonRects(hItem, rcItem);
 
-            // --- GÖRSEL İYİLEŞTİRME ---
-            // Edit Butonu (Mavi tonlu hover)
+            // --- MODERN GÖRSEL İYİLEŞTİRME: Gradient Butonlar ---
+            // Edit Butonu (Mavi tonlu hover ile gradient)
             COLORREF editColor = (m_hotButton == 1) ? RGB(0, 120, 215) : RGB(240, 240, 240);
-            CBrush brEdit(editColor);
-            dc.FillRect(m_btnArea.rcEdit, brEdit);
+            COLORREF editColorEnd = LightenColor(editColor, (m_hotButton == 1) ? 30 : 10);
+            
+            RECT rcEdit = m_btnArea.rcEdit;
+            DrawGradientRect(dc.GetHDC(), rcEdit, editColor, editColorEnd, true);
             dc.DrawEdge(m_btnArea.rcEdit, EDGE_RAISED, BF_RECT);
+            dc.SetBkMode(TRANSPARENT);
             dc.SetTextColor((m_hotButton == 1) ? RGB(255, 255, 255) : RGB(0, 0, 0));
             dc.DrawText(L"✎", -1, m_btnArea.rcEdit, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 
-            // Print Butonu (Yeşil tonlu hover)
+            // Print Butonu (Yeşil tonlu hover ile gradient)
             COLORREF printColor = (m_hotButton == 2) ? RGB(34, 139, 34) : RGB(240, 240, 240);
-            CBrush brPrint(printColor);
-            dc.FillRect(m_btnArea.rcPrint, brPrint);
+            COLORREF printColorEnd = LightenColor(printColor, (m_hotButton == 2) ? 30 : 10);
+            
+            RECT rcPrint = m_btnArea.rcPrint;
+            DrawGradientRect(dc.GetHDC(), rcPrint, printColor, printColorEnd, true);
             dc.DrawEdge(m_btnArea.rcPrint, EDGE_RAISED, BF_RECT);
+            dc.SetBkMode(TRANSPARENT);
             dc.SetTextColor((m_hotButton == 2) ? RGB(255, 255, 255) : RGB(0, 0, 0));
             dc.DrawText(L"🖨", -1, m_btnArea.rcPrint, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
         }
