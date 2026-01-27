@@ -39,6 +39,17 @@ struct SahibindenListingPayload
     CString contactName;
     CString contactPhone;
     CString featuresText;
+    
+    // ---- NEW: Categorized Features (Images 2-3-4) ----
+    CString facades;              // Cephe (multiple)
+    CString featuresInterior;     // İç Özellikler (multiple)
+    CString featuresExterior;     // Dış Özellikler (multiple)
+    CString featuresNeighborhood; // Muhit (multiple)
+    CString featuresTransport;    // Ulaşım (multiple)
+    CString featuresView;         // Manzara (multiple)
+    CString housingType;          // Konut Tipi (usually single)
+    CString featuresAccessibility;// Engelli ve Yaşlıya Uygun (multiple)
+    
     // ---- LAND (Arsa/Tarla/Bag/Bahçe) ----
 // ---- LAND (Arsa/Tarla/Bag/Bahçe) detay alanları ----
     CString LAND_ListingTitle;     // HTML'den (og:title / h1 / title)
@@ -55,6 +66,28 @@ struct SahibindenListingPayload
     CString LAND_Kimden;           // "Kimden" / dmpData: kimden
     CString LAND_Takas;            // "Takas"
     CString LAND_Cat2;             // customVars cat2 ("Arsa"), dmpData cat2 ("arsa") -> tip tespiti güçlendirir
+
+    // ---- VILLA-specific fields ----
+    CString VILLA_AcikAlanM2;      // "Açık Alan m²" / open area square meters
+    
+    // ---- CAR/VEHICLE (Araç) detay alanları ----
+    CString CAR_Brand;             // "Marka" / brand
+    CString CAR_Series;            // "Seri" / series
+    CString CAR_Model;             // "Model" / model
+    CString CAR_Year;              // "Yıl" / year
+    CString CAR_Km;                // "KM" / kilometers
+    CString CAR_FuelType;          // "Yakıt Tipi" / fuel type
+    CString CAR_Transmission;      // "Vites Tipi" / transmission
+    CString CAR_EngineVolume;      // "Motor Hacmi" / engine volume
+    CString CAR_EnginePower;       // "Motor Gücü" / engine power
+    CString CAR_Drive;             // "Çekiş" / drive type
+    CString CAR_BodyType;          // "Kasa Tipi" / body type
+    CString CAR_Color;             // "Renk" / color
+    CString CAR_DamageRecord;      // "Hasar Kaydı" / damage record
+    CString CAR_Warranty;          // "Garanti" / warranty
+    CString CAR_Plate;             // "Plaka" / license plate
+    CString CAR_VehicleCondition;  // "Araç Durumu" / vehicle condition
+    CString CAR_Title;             // Listing title
 
 };
 
