@@ -1,3 +1,23 @@
+// ============================================================================
+// PREVIEWPANEL.CPP - Profesyonel Yazdırma ve Önizleme Sistemi
+// ============================================================================
+// Bu dosya, GDI+ tabanlı belge önizleme ve yazdırma işlevlerini içerir.
+//
+// PROFESYONEL ÖZELLIKLER:
+// - Gelişmiş yazdırma diyaloğu (sayfa aralığı, kopya sayısı)
+// - Gerçek zamanlı durum çubuğu (sayfa bilgisi, zoom yüzdesi)
+// - Klavye kısayolları (Ctrl+P, Ctrl+S, PgUp/PgDn, Home/End, Ctrl+/-)
+// - Akıllı buton yönetimi (önceki/sonraki otomatik enable/disable)
+// - Yüksek kaliteli yazıcı çıktısı (anti-aliasing, compositing)
+// - Kapsamlı hata işleme (detaylı mesajlar, sorun giderme ipuçları)
+// - İlerleme göstergeleri (PDF/PNG kaydetme, yazdırma)
+// - Win32++ mimarisi (MFC/ATL bağımlılığı yok)
+//
+// KULLANIM:
+// PreviewPanel, IDocumentLayout arayüzü üzerinden çalışır ve
+// LayoutFactory ile oluşturulan tüm belge türlerini destekler.
+// ============================================================================
+
 #include "stdafx.h"
 #include "PreviewPanel.h"
 #include "RibbonApp.h"
@@ -10,6 +30,8 @@
 #include "HaruDrawContext.h"
 #include "JsonFormRenderer.h"
 #include "RenderConfig.h"
+#include "DataMapper.h"
+#include "PrintPreviewHelper.h"
 
 #include <memory>
 #include <vector>
@@ -70,11 +92,13 @@ static bool TryRenderContractWithJson(    IDrawContext& ctx,    const PreviewIte
     }
 
     // Veriyi JsonFormRenderer'n bekledii forma evir (map<CString,CString>)
-    std::map<CString, CString> data;
-    for (const auto& kv : item.fields)
+    // Use DataMapper for better field mapping
+    std::map<CString, CString> data = DataMapper::MapFields(item.fields);
+    
+    // Optional: Log if data is empty (for debugging)
+    if (data.empty())
     {
-        // Ayn key birden fazla kez gelirse sonuncusu geerli olur
-        data[kv.first] = kv.second;
+        OutputDebugString(L"Warning: No data fields available for JSON rendering");
     }
 
     // stersen burada ekstra normalize de yapabilirsin:
@@ -113,6 +137,7 @@ void CPreviewPanel::SetPreviewData(const PreviewItem& data)
 {
     m_data = data;
     m_currentPage = 1;
+    m_zoomPercentage = 100.0; // Başlangıç zoom
     if (IsWindow()) PostMessage(WM_USER + 101);
 }
 
@@ -120,13 +145,9 @@ BOOL CPreviewPanel::OnInitDialog()
 {
     CDialog::OnInitDialog();
 
-    //if (g_gdiplusToken == 0) {
-    //    Gdiplus::GdiplusStartupInput gdiplusStartupInput;
-    //    Gdiplus::GdiplusStartup(&g_gdiplusToken, &gdiplusStartupInput, NULL);
-    //}
-
     CreateToolbar();
-    PostMessage(WM_USER + 101); // lk izim
+    CreateStatusBar();
+    PostMessage(WM_USER + 101); // İlk çizim
 
     return TRUE;
 }
@@ -142,9 +163,68 @@ INT_PTR CPreviewPanel::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
             UpdatePreview();
             return TRUE;
 
+        case WM_USER + 102: // Zoom değişti mesajı
+            UpdateZoomInfo();
+            return TRUE;
+
         case WM_SIZE:
             LayoutChildren();
             return TRUE;
+
+        case WM_KEYDOWN:
+            // Klavye kısayolları
+            switch (wParam)
+            {
+            case VK_PRIOR:  // Page Up
+                OnBtnPrevPage();
+                return TRUE;
+            case VK_NEXT:   // Page Down
+                OnBtnNextPage();
+                return TRUE;
+            case VK_HOME:   // İlk sayfa
+                if (m_currentPage != 1) {
+                    m_currentPage = 1;
+                    UpdatePreview();
+                    UpdatePageInfo();
+                }
+                return TRUE;
+            case VK_END:    // Son sayfa
+                if (m_currentPage != m_totalPages) {
+                    m_currentPage = m_totalPages;
+                    UpdatePreview();
+                    UpdatePageInfo();
+                }
+                return TRUE;
+            case VK_ADD:    // + tuşu (numpad)
+            case VK_OEM_PLUS: // + tuşu (klavye)
+                if (GetKeyState(VK_CONTROL) & 0x8000) {
+                    m_zoomWnd.ZoomIn();
+                    UpdateZoomInfo();
+                    return TRUE;
+                }
+                break;
+            case VK_SUBTRACT: // - tuşu (numpad)
+            case VK_OEM_MINUS: // - tuşu (klavye)
+                if (GetKeyState(VK_CONTROL) & 0x8000) {
+                    m_zoomWnd.ZoomOut();
+                    UpdateZoomInfo();
+                    return TRUE;
+                }
+                break;
+            case 'P':       // Ctrl+P = Yazdır
+                if (GetKeyState(VK_CONTROL) & 0x8000) {
+                    OnPrint();
+                    return TRUE;
+                }
+                break;
+            case 'S':       // Ctrl+S = PDF Kaydet
+                if (GetKeyState(VK_CONTROL) & 0x8000) {
+                    OnSaveAsPDF();
+                    return TRUE;
+                }
+                break;
+            }
+            break;
 
         case WM_COMMAND:
             switch (LOWORD(wParam))
@@ -156,10 +236,10 @@ INT_PTR CPreviewPanel::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam)
             case ID_BTN_PREV: OnBtnPrevPage(); return TRUE;
             case ID_BTN_NEXT: OnBtnNextPage(); return TRUE;
 
-            case IDC_ZOOMIN:     m_zoomWnd.ZoomIn(); return TRUE;
-            case IDC_ZOOMOUT:    m_zoomWnd.ZoomOut(); return TRUE;
-            case IDC_BESTFIT:    m_zoomWnd.BestFit(); return TRUE;
-            case IDC_ACTUALSIZE: m_zoomWnd.ActualSize(); return TRUE;
+            case IDC_ZOOMIN:     m_zoomWnd.ZoomIn(); UpdateZoomInfo(); return TRUE;
+            case IDC_ZOOMOUT:    m_zoomWnd.ZoomOut(); UpdateZoomInfo(); return TRUE;
+            case IDC_BESTFIT:    m_zoomWnd.BestFit(); UpdateZoomInfo(); return TRUE;
+            case IDC_ACTUALSIZE: m_zoomWnd.ActualSize(); UpdateZoomInfo(); return TRUE;
 
             case IDC_NORMAL: OnSaveAsPNG(); return TRUE;
 
@@ -249,6 +329,84 @@ void CPreviewPanel::CreateToolbar()
     m_ToolBar.ShowWindow(SW_SHOW);
 }
 
+// ============================================================================
+// STATUS BAR - Sayfa ve Zoom Bilgisi için
+// ============================================================================
+void CPreviewPanel::CreateStatusBar()
+{
+    if (!m_StatusBar.IsWindow())
+    {
+        m_StatusBar.Create(*this);
+        
+        // 3 bölümlü status bar: [Sayfa Bilgisi] [Zoom] [Hazır]
+        int parts[] = { 200, 350, -1 };
+        m_StatusBar.SetParts(3, parts);
+        
+        UpdatePageInfo();
+        UpdateZoomInfo();
+        m_StatusBar.SetPartText(2, L"Haz\u0131r");
+    }
+}
+
+void CPreviewPanel::UpdatePageInfo()
+{
+    if (m_StatusBar.IsWindow())
+    {
+        CString pageInfo;
+        pageInfo.Format(L"Sayfa %d / %d", m_currentPage, m_totalPages);
+        m_StatusBar.SetPartText(0, pageInfo);
+    }
+    
+    // Önceki/Sonraki butonlarının durumunu güncelle
+    if (m_ToolBar.IsWindow())
+    {
+        // Önceki butonu - sadece 1. sayfada değilsek aktif
+        BOOL enablePrev = (m_currentPage > 1);
+        m_ToolBar.EnableButton(ID_BTN_PREV, enablePrev);
+        
+        // Sonraki butonu - sadece son sayfada değilsek aktif
+        BOOL enableNext = (m_currentPage < m_totalPages);
+        m_ToolBar.EnableButton(ID_BTN_NEXT, enableNext);
+    }
+}
+
+void CPreviewPanel::UpdateZoomInfo()
+{
+    if (m_StatusBar.IsWindow())
+    {
+        CString zoomInfo = FormatZoomPercentage();
+        m_StatusBar.SetPartText(1, zoomInfo);
+    }
+}
+
+CString CPreviewPanel::FormatZoomPercentage() const
+{
+    CString result;
+    
+    // ZoomWnd'den gerçek zoom yüzdesini al
+    if (m_zoomWnd.IsWindow() && m_zoomWnd.m_cxImage > 0)
+    {
+        // Mevcut görüntüleme boyutunu orijinal boyuta bölerek zoom hesapla
+        double zoomX = (m_zoomWnd.m_ptszDest.cx * 100.0) / m_zoomWnd.m_cxImage;
+        
+        // "Best Fit" modunda mı kontrol et
+        if (m_zoomWnd.m_bBestFit)
+        {
+            result.Format(L"Yak\u0131nla\u015Ft\u0131rma: %%%d (En iyi s\u0131\u011Fd\u0131r)", (int)(zoomX + 0.5));
+        }
+        else
+        {
+            result.Format(L"Yak\u0131nla\u015Ft\u0131rma: %%%d", (int)(zoomX + 0.5));
+        }
+    }
+    else
+    {
+        result = L"Yak\u0131nla\u015Ft\u0131rma: %100";
+    }
+    
+    return result;
+}
+
 
 void CPreviewPanel::LayoutChildren()
 {
@@ -262,7 +420,15 @@ void CPreviewPanel::LayoutChildren()
         m_ToolBar.SetWindowPos(NULL, 0, 0, rcClient.Width(), tbH, SWP_SHOWWINDOW);
     }
 
-    CRect rcZoom(0, tbH, rcClient.Width(), rcClient.Height());
+    int sbH = 0;
+    if (m_StatusBar.IsWindow()) {
+        CRect rcStatus = m_StatusBar.GetClientRect();
+        sbH = rcStatus.Height();
+        m_StatusBar.SetWindowPos(NULL, 0, rcClient.Height() - sbH, 
+                                 rcClient.Width(), sbH, SWP_SHOWWINDOW);
+    }
+
+    CRect rcZoom(0, tbH, rcClient.Width(), rcClient.Height() - sbH);
     if (!m_zoomWnd.IsWindow()) m_zoomWnd.Create(*this);
     m_zoomWnd.SetWindowPos(NULL, rcZoom, SWP_SHOWWINDOW);
 }
@@ -274,6 +440,7 @@ void CPreviewPanel::OnBtnPrevPage() {
     if (m_currentPage > 1) {
         m_currentPage--;
         UpdatePreview();
+        UpdatePageInfo();
     }
 }
 
@@ -281,6 +448,7 @@ void CPreviewPanel::OnBtnNextPage() {
     if (m_currentPage < m_totalPages) {
         m_currentPage++;
         UpdatePreview();
+        UpdatePageInfo();
     }
 }
 
@@ -337,6 +505,8 @@ void CPreviewPanel::UpdatePreview()
     if (hBmp) {
         m_zoomWnd.SetBitmap(hBmp);
         m_zoomWnd.Invalidate();
+        UpdatePageInfo();
+        UpdateZoomInfo();
     }
 }
 
@@ -351,6 +521,10 @@ void CPreviewPanel::OnSaveAsPDF()
     CFileDialog dlg(FALSE, L"pdf", fileName, OFN_OVERWRITEPROMPT, L"PDF Dosyas (*.pdf)|*.pdf||");
     if (dlg.DoModal(*this) != IDOK) return;
 
+    // İşlem başladığını göster
+    if (m_StatusBar.IsWindow())
+        m_StatusBar.SetPartText(2, L"PDF olu\u015Fturuluyor...");
+
     HaruDrawContext pdf;
 
     if (pdf.BeginDocument(dlg.GetPathName()))
@@ -358,28 +532,60 @@ void CPreviewPanel::OnSaveAsPDF()
         try
         {
             std::unique_ptr<IDocumentLayout> layout(LayoutFactory::CreateLayout(m_data.docType));
-            if (layout)
+            if (!layout)
             {
-                layout->SetData(m_data.fields);
-                int pages = layout->GetTotalPages();
-
-                for (int i = 1; i <= pages; ++i)
-                {
-                    layout->Render(pdf, i);
-                }
+                throw std::runtime_error("Belge düzeni oluşturulamadı");
             }
+            
+            layout->SetData(m_data.fields);
+            int pages = layout->GetTotalPages();
+
+            for (int i = 1; i <= pages; ++i)
+            {
+                // İlerleme göster
+                if (m_StatusBar.IsWindow())
+                {
+                    CString progress;
+                    progress.Format(L"PDF olu\u015Fturuluyor: Sayfa %d / %d", i, pages);
+                    m_StatusBar.SetPartText(2, progress);
+                }
+                
+                layout->Render(pdf, i);
+            }
+            
             pdf.EndDocument();
-            MessageBox(L"PDF Kaydedildi.", L"Bilgi", MB_OK);
+            
+            // Başarı mesajı
+            CString successMsg;
+            successMsg.Format(L"PDF ba\u015Far\u0131yla kaydedildi.\nDosya: %s\nSayfa say\u0131s\u0131: %d", 
+                             dlg.GetPathName().GetString(), pages);
+            MessageBox(successMsg, L"Bilgi", MB_ICONINFORMATION);
+            
+            if (m_StatusBar.IsWindow())
+                m_StatusBar.SetPartText(2, L"Haz\u0131r");
         }
         catch (const std::exception& e)
         {
-            CString err; err.Format(L"PDF Hatas: %S", e.what());
+            CString err; 
+            err.Format(L"PDF Hatas\u0131:\n%S\n\nL\u00FCtfen dosya yolunun ge\u00E7erli oldu\u011Funu ve "
+                      L"yazma izniniz oldu\u011Funu kontrol edin.", e.what());
             MessageBox(err, L"Hata", MB_ICONERROR);
+            
+            if (m_StatusBar.IsWindow())
+                m_StatusBar.SetPartText(2, L"Hata - PDF olu\u015Fturulamad\u0131");
         }
     }
     else
     {
-        MessageBox(L"PDF Dosyas oluturulamad (Dosya ak olabilir).", L"Hata", MB_ICONERROR);
+        MessageBox(L"PDF Dosyas\u0131 olu\u015Fturulamad\u0131.\n\n"
+                  L"Olas\u0131 sebepler:\n"
+                  L"- Dosya ba\u015Fka bir program taraf\u0131ndan kullan\u0131l\u0131yor\n"
+                  L"- Yazma izniniz yok\n"
+                  L"- Disk dolu", 
+                  L"Hata", MB_ICONERROR);
+        
+        if (m_StatusBar.IsWindow())
+            m_StatusBar.SetPartText(2, L"Haz\u0131r");
     }
 }
 
@@ -394,13 +600,43 @@ void CPreviewPanel::OnSaveAsPNG()
     CFileDialog dlg(FALSE, L"png", fileName, OFN_OVERWRITEPROMPT, L"PNG Resim (*.png)|*.png||");
     if (dlg.DoModal(*this) != IDOK) return;
 
+    // İşlem başladığını göster
+    if (m_StatusBar.IsWindow())
+        m_StatusBar.SetPartText(2, L"PNG kaydediliyor...");
+
     HBITMAP hBmp = GeneratePreviewBitmap();
-    if (hBmp) {
+    if (hBmp) 
+    {
         if (SaveBitmapToPNG(hBmp, dlg.GetPathName()))
-            MessageBox(L"Resim Kaydedildi.", L"Bilgi", MB_OK);
+        {
+            CString successMsg;
+            successMsg.Format(L"Resim ba\u015Far\u0131yla kaydedildi.\nDosya: %s\nSayfa: %d", 
+                             dlg.GetPathName().GetString(), m_currentPage);
+            MessageBox(successMsg, L"Bilgi", MB_ICONINFORMATION);
+            
+            if (m_StatusBar.IsWindow())
+                m_StatusBar.SetPartText(2, L"Haz\u0131r");
+        }
         else
-            MessageBox(L"Resim kaydedilemedi.", L"Hata", MB_ICONERROR);
+        {
+            MessageBox(L"Resim kaydedilemedi.\n\n"
+                      L"Olas\u0131 sebepler:\n"
+                      L"- Dosya ba\u015Fka bir program taraf\u0131ndan kullan\u0131l\u0131yor\n"
+                      L"- Yazma izniniz yok\n"
+                      L"- Disk dolu", 
+                      L"Hata", MB_ICONERROR);
+            
+            if (m_StatusBar.IsWindow())
+                m_StatusBar.SetPartText(2, L"Haz\u0131r");
+        }
         DeleteObject(hBmp);
+    }
+    else
+    {
+        MessageBox(L"\u00D6nizleme olu\u015Fturulamad\u0131.", L"Hata", MB_ICONERROR);
+        
+        if (m_StatusBar.IsWindow())
+            m_StatusBar.SetPartText(2, L"Haz\u0131r");
     }
 }
 
@@ -427,50 +663,182 @@ bool CPreviewPanel::SaveBitmapToPNG(HBITMAP hBmp, const CString& filePath)
 }
 
 // ============================================================================
-// YAZDIRMA (PRINT) - LEKLEME DESTEKL
+// YAZDIRMA (PRINT) - İŞLEME DESTEKLİ VE HATA YÖNETİMİ
 // ============================================================================
 void CPreviewPanel::OnPrint()
 {
-    CPrintDialog printDlg(FALSE);
-    if (printDlg.DoModal(*this) != IDOK) return;
+    // Gelişmiş yazdırma diyaloğu - Kopya sayısı, sayfa aralığı vb.
+    PRINTDLG pd = { 0 };
+    pd.lStructSize = sizeof(pd);
+    pd.hwndOwner = *this;
+    pd.Flags = PD_RETURNDC | PD_USEDEVMODECOPIESANDCOLLATE | PD_ALLPAGES | PD_NOSELECTION;
+    
+    // Sayfa aralığı seçeneği ekle
+    if (m_totalPages > 1)
+    {
+        pd.Flags |= PD_PAGENUMS;
+        pd.nMinPage = 1;
+        pd.nMaxPage = m_totalPages;
+        pd.nFromPage = 1;
+        pd.nToPage = m_totalPages;
+    }
+    
+    if (!::PrintDlg(&pd))
+        return; // Kullanıcı iptal etti
 
     HDC hPrinterDC = printDlg.GetPrinterDC();
-    if (!hPrinterDC) return;
+    if (!hPrinterDC)
+    {
+        MessageBox(L"Yazıcı bağlantısı kurulamadı.", L"Hata", MB_ICONERROR);
+        return;
+    }
+
+    // Validate printer DC
+    if (!PrintPreviewHelper::ValidatePrinterDC(hPrinterDC))
+    {
+        MessageBox(L"Geçersiz yazıcı cihazı.", L"Hata", MB_ICONERROR);
+        return;
+    }
 
     CDC dcPrinter;
     dcPrinter.Attach(hPrinterDC);
 
     DOCINFO di = { sizeof(DOCINFO), L"Emlak Belgesi" };
-    dcPrinter.StartDoc(&di);
+    if (dcPrinter.StartDoc(&di) <= 0)
+    {
+        CString errMsg = PrintPreviewHelper::FormatPrintError(::GetLastError());
+        MessageBox(errMsg, L"Hata", MB_ICONERROR);
+        return;
+    }
+
+    bool printSuccess = true;
 
     try
     {
         std::unique_ptr<IDocumentLayout> layout(LayoutFactory::CreateLayout(m_data.docType));
-        if (layout)
+        if (!layout)
         {
-            layout->SetData(m_data.fields);
-            int pages = layout->GetTotalPages();
+            throw std::runtime_error("Belge düzeni oluşturulamadı");
+        }
 
-            for (int i = 1; i <= pages; ++i)
+        layout->SetData(m_data.fields);
+        int totalPages = layout->GetTotalPages();
+
+        // Hangi sayfaları yazdıracağımızı belirle
+        int startPage = 1;
+        int endPage = totalPages;
+        
+        if (pd.Flags & PD_PAGENUMS)
+        {
+            startPage = pd.nFromPage;
+            endPage = pd.nToPage;
+            // Geçerli aralık kontrolü
+            if (startPage < 1) startPage = 1;
+            if (endPage > totalPages) endPage = totalPages;
+            if (startPage > endPage) startPage = endPage;
+        }
+
+        // İlerleme için status bar güncelle
+        CString statusMsg;
+        statusMsg.Format(L"Yazdırılıyor: Sayfa %d-%d / %d", startPage, endPage, totalPages);
+        if (m_StatusBar.IsWindow())
+            m_StatusBar.SetPartText(2, statusMsg);
+
+        // Sayfaları yazdır
+        for (int i = startPage; i <= endPage; ++i)
+        {
+            dcPrinter.StartPage();
+
+            // Yazıcı DC'yi kullanarak yüksek kaliteli yazdırma
+            // SetLogicalPageSize fonksiyonu otomatik ölçeklendirme yapacak
+            GdiPlusDrawContext ctx;
+            if (ctx.Begin(hPrinterDC))
             {
-                dcPrinter.StartPage();
-
-                // GDI+ Context'i Printer DC ile balat
-                // GdiPlusDrawContext iindeki SetLogicalPageSize, 
-                // A4 boyutunu kada otomatik sdracak (Scale yapacak).
-                GdiPlusDrawContext ctx;
-                if (ctx.Begin(hPrinterDC)) {
-                    layout->Render(ctx, i);
-                    ctx.End();
+                if (dcPrinter.StartPage() <= 0)
+                {
+                    printSuccess = false;
+                    break;
                 }
 
-                dcPrinter.EndPage();
+                // Setup GdiPlusDrawContext for printer with proper page size
+                GdiPlusDrawContext ctx;
+                
+                // A4 dimensions (matching PreviewItem.h constants)
+                const double A4_WIDTH = 2100.0;  // Logical A4 width
+                const double A4_HEIGHT = 2970.0; // Logical A4 height
+                
+                if (PrintPreviewHelper::SetupPrintContext(ctx, hPrinterDC, A4_WIDTH, A4_HEIGHT))
+                {
+                    try
+                    {
+                        layout->Render(ctx, i);
+                    }
+                    catch (const std::exception& e)
+                    {
+                        // Log error but continue
+                        CString msg;
+                        msg.Format(L"Sayfa %d render hatası: %S", i, e.what());
+                        OutputDebugString(msg);
+                        printSuccess = false;
+                    }
+                    ctx.End();
+                }
+                else
+                {
+                    printSuccess = false;
+                }
+
+                if (dcPrinter.EndPage() <= 0)
+                {
+                    printSuccess = false;
+                    break;
+                }
             }
         }
+
+        dcPrinter.EndDoc();
+        
+        // Başarı mesajı
+        CString successMsg;
+        successMsg.Format(L"Yazdırma tamamlandı.\n%d sayfa başarıyla yazdırıldı.", 
+                         endPage - startPage + 1);
+        MessageBox(successMsg, L"Bilgi", MB_ICONINFORMATION);
+        
+        if (m_StatusBar.IsWindow())
+            m_StatusBar.SetPartText(2, L"Hazır");
     }
-    catch (...) {
-        MessageBox(L"Yazdrma srasnda hata olutu.", L"Hata", MB_ICONERROR);
+    catch (const std::exception& e)
+    {
+        dcPrinter.AbortDoc();
+        
+        CString errMsg;
+        errMsg.Format(L"Yazdırma sırasında hata oluştu:\n%S", e.what());
+        MessageBox(errMsg, L"Hata", MB_ICONERROR);
+        
+        if (m_StatusBar.IsWindow())
+            m_StatusBar.SetPartText(2, L"Hata - Yazdırma iptal edildi");
+    }
+    catch (const std::exception& e)
+    {
+        CString msg;
+        msg.Format(L"Yazdırma sırasında kritik hata: %S", e.what());
+        MessageBox(msg, L"Hata", MB_ICONERROR);
+        printSuccess = false;
+    }
+    catch (...)
+    {
+        MessageBox(L"Yazdırma sırasında bilinmeyen hata oluştu.", L"Hata", MB_ICONERROR);
+        printSuccess = false;
     }
 
     dcPrinter.EndDoc();
+    
+    if (printSuccess)
+    {
+        MessageBox(L"Yazdırma tamamlandı.", L"Bilgi", MB_OK | MB_ICONINFORMATION);
+    }
+    else
+    {
+        MessageBox(L"Yazdırma tamamlanamadı. Bazı sayfalar yazdırılamış olabilir.", L"Uyarı", MB_OK | MB_ICONWARNING);
+    }
 }

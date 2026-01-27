@@ -177,6 +177,11 @@ BEGIN
             MENUITEM "Fiyat Düştü",                 IDM_STATUS_PRICE_DOWN
             MENUITEM "Acil Satılık",                IDM_STATUS_URGENT
             MENUITEM "Pasif / İptal",               IDM_STATUS_PASSIVE
+            MENUITEM SEPARATOR
+            MENUITEM "Satıldı (Kırmızı)",           IDM_STATUS_SOLD_NEW
+            MENUITEM "Beklemede (Yeşil)",           IDM_STATUS_WAITING
+            MENUITEM "Fiyat Takipte (Sarı)",        IDM_STATUS_PRICE_TRACKING
+            MENUITEM "Durum: Sorunlu (Gri)",        IDM_STATUS_PROBLEMATIC
         END
         POPUP "Baskı Önizleme"
         BEGIN
@@ -352,7 +357,7 @@ BEGIN
     PUSHBUTTON      "Button1",IDC_PREVIEW_PRINT,154,226,50,14
 END
 
-IDD_HOME_DIALOG DIALOGEX 0, 0, 580, 410
+IDD_HOME_DIALOG DIALOGEX 0, 0, 580, 430
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 CAPTION "Daire/Ev Portföy Yönetimi"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1

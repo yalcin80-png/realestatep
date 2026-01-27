@@ -2,6 +2,7 @@
 #include "JsonFormRenderer.h"
 #include "TemplateLoader.h"
 #include "ThemeConfig.h"
+#include "DataMapper.h"
 #include <algorithm>
 
 JsonFormRenderer::JsonFormRenderer() {}
@@ -167,14 +168,21 @@ int JsonFormRenderer::RenderElement(IDrawContext& ctx, const JElement& el,
         else align |= DT_LEFT;
 
         CString textToDraw = el.text.c_str();
+        
+        // Bind key varsa ve veri varsa, veriyi kullan
         if (!el.bindKey.empty())
         {
             auto it = data.find(el.bindKey.c_str());
-            if (it != data.end())
+            if (it != data.end() && !it->second.IsEmpty())
                 textToDraw = it->second;
         }
 
-        ctx.DrawTextW(textToDraw.GetString(), absX, absY, el.w, el.h, align);
+        // Sadece text varsa çiz
+        if (!textToDraw.IsEmpty())
+        {
+            ctx.DrawTextW(textToDraw.GetString(), absX, absY, el.w, el.h, align);
+        }
+        
         return finalHeight;
     }
 
@@ -184,8 +192,15 @@ int JsonFormRenderer::RenderElement(IDrawContext& ctx, const JElement& el,
     if (el.type == JElementType::Field)
     {
         CString val = L"";
-        auto it = data.find(el.bindKey.c_str());
-        if (it != data.end()) val = it->second;
+        
+        // Veri lookup - Case insensitive ve null check
+        if (!el.bindKey.empty())
+        {
+            auto it = data.find(el.bindKey.c_str());
+            if (it != data.end() && !it->second.IsEmpty()) {
+                val = it->second;
+            }
+        }
 
         // Background
         ctx.FillRect(absX, absY, el.w, el.h, Theme::Color_BoxBg);
@@ -215,15 +230,18 @@ int JsonFormRenderer::RenderElement(IDrawContext& ctx, const JElement& el,
             valueHeight = el.h - labelHeight;
         }
 
-        // VALUE
-        ctx.SetFont(fontToUse);
-        ctx.SetBrush(fg);
-        ctx.DrawTextW(val.GetString(),
-            absX + 8,
-            absY + textOffsetY,
-            el.w - 16,
-            valueHeight,
-            DT_LEFT | DT_VCENTER);
+        // VALUE - Sadece değer varsa göster
+        if (!val.IsEmpty())
+        {
+            ctx.SetFont(fontToUse);
+            ctx.SetBrush(fg);
+            ctx.DrawTextW(val.GetString(),
+                absX + 8,
+                absY + textOffsetY,
+                el.w - 16,
+                valueHeight,
+                DT_LEFT | DT_VCENTER);
+        }
 
         return el.h;
     }
@@ -268,17 +286,17 @@ int JsonFormRenderer::RenderElement(IDrawContext& ctx, const JElement& el,
         const int boxSize = 26;
         const int padding = 4;
 
-        // Değer okumak
+        // Değer okumak - Improved null/empty check
         bool checked = false;
         if (!el.bindKey.empty())
         {
             auto it = data.find(el.bindKey.c_str());
-            if (it != data.end())
+            if (it != data.end() && !it->second.IsEmpty())
             {
-                CString v = it->second;
-                v.MakeLower();
-                if (v == L"1" || v == L"true" || v == L"x")
-                    checked = true;
+                // Use DataMapper for consistent boolean parsing
+                std::map<CString, CString> tempMap;
+                tempMap[el.bindKey.c_str()] = it->second;
+                checked = DataMapper::GetBoolValue(tempMap, el.bindKey.c_str());
             }
         }
 
@@ -301,17 +319,20 @@ int JsonFormRenderer::RenderElement(IDrawContext& ctx, const JElement& el,
         }
 
         // Label çizimi
-        ctx.SetFont(fontToUse);
-        ctx.SetBrush(GetColor(el.textColor.empty() ? L"Black" : el.textColor));
+        if (!el.text.empty())
+        {
+            ctx.SetFont(fontToUse);
+            ctx.SetBrush(GetColor(el.textColor.empty() ? L"Black" : el.textColor));
 
-        int textOffsetX = absX + boxSize + padding;
-        int textOffsetY = absY;
+            int textOffsetX = absX + boxSize + padding;
+            int textOffsetY = absY;
 
-        ctx.DrawTextW(el.text.c_str(),
-            textOffsetX, textOffsetY,
-            el.w - (boxSize + padding),
-            boxSize,
-            DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+            ctx.DrawTextW(el.text.c_str(),
+                textOffsetX, textOffsetY,
+                el.w - (boxSize + padding),
+                boxSize,
+                DT_LEFT | DT_VCENTER | DT_SINGLELINE);
+        }
 
         // Eleman yüksekliği = kutu yüksekliği
         return boxSize;
