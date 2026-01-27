@@ -67,6 +67,28 @@ struct SahibindenListingPayload
     CString LAND_Takas;            // "Takas"
     CString LAND_Cat2;             // customVars cat2 ("Arsa"), dmpData cat2 ("arsa") -> tip tespiti güçlendirir
 
+    // ---- VILLA-specific fields ----
+    CString VILLA_AcikAlanM2;      // "Açık Alan m²" / open area square meters
+    
+    // ---- CAR/VEHICLE (Araç) detay alanları ----
+    CString CAR_Brand;             // "Marka" / brand
+    CString CAR_Series;            // "Seri" / series
+    CString CAR_Model;             // "Model" / model
+    CString CAR_Year;              // "Yıl" / year
+    CString CAR_Km;                // "KM" / kilometers
+    CString CAR_FuelType;          // "Yakıt Tipi" / fuel type
+    CString CAR_Transmission;      // "Vites Tipi" / transmission
+    CString CAR_EngineVolume;      // "Motor Hacmi" / engine volume
+    CString CAR_EnginePower;       // "Motor Gücü" / engine power
+    CString CAR_Drive;             // "Çekiş" / drive type
+    CString CAR_BodyType;          // "Kasa Tipi" / body type
+    CString CAR_Color;             // "Renk" / color
+    CString CAR_DamageRecord;      // "Hasar Kaydı" / damage record
+    CString CAR_Warranty;          // "Garanti" / warranty
+    CString CAR_Plate;             // "Plaka" / license plate
+    CString CAR_VehicleCondition;  // "Araç Durumu" / vehicle condition
+    CString CAR_Title;             // Listing title
+
 };
 
 class SahibindenImporter
