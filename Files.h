@@ -28,6 +28,7 @@
 #include <vector>
 #include <memory>
 #include <algorithm>
+#include <set>
 
 #pragma comment(lib, "gdiplus.lib")
 #pragma comment(lib, "UxTheme.lib")
@@ -246,6 +247,14 @@ public:
     bool IsPointInAddButton(POINT pt, int& outItem);
     void ShowQuickAddMenu(POINT pt, const CString& cariKod);
     void ShowRadialMenuAt(POINT pt, const CString& cariKod);
+    
+    // ---- New Card Action Buttons ----
+    CRect GetEditButtonRect(int nItem);
+    CRect GetIdToggleButtonRect(int nItem);
+    bool IsPointInEditButton(POINT pt, int& outItem);
+    bool IsPointInIdToggleButton(POINT pt, int& outItem);
+    CString MaskIdNumber(const CString& idNumber);
+    bool IsIdNumberUnmasked(int nItem) const;
 
 
 
@@ -309,6 +318,9 @@ private:
     CString m_currentFilter;
     int     m_filterCategory = 0;
     int     m_currentStatus = 0;
+    
+    // ---- ID Masking State ----
+    std::set<int> m_unmaskedIdItems;  // Items with unmasked ID numbers
 
     CCustomerInfoPopup m_infoPopup;
     CInlineEdit  m_editBox;

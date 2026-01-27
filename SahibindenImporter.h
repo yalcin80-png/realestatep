@@ -2,6 +2,7 @@
 #include <vector>
 #include <functional>
 #include <string>
+#include <optional>
 #include "wxx_wincore.h"
 #include "dataIsMe.h" 
 
@@ -39,6 +40,17 @@ struct SahibindenListingPayload
     CString contactName;
     CString contactPhone;
     CString featuresText;
+    
+    // ---- NEW: Categorized Features (Images 2-3-4) ----
+    CString facades;              // Cephe (multiple)
+    CString featuresInterior;     // İç Özellikler (multiple)
+    CString featuresExterior;     // Dış Özellikler (multiple)
+    CString featuresNeighborhood; // Muhit (multiple)
+    CString featuresTransport;    // Ulaşım (multiple)
+    CString featuresView;         // Manzara (multiple)
+    CString housingType;          // Konut Tipi (usually single)
+    CString featuresAccessibility;// Engelli ve Yaşlıya Uygun (multiple)
+    
     // ---- LAND (Arsa/Tarla/Bag/Bahçe) ----
 // ---- LAND (Arsa/Tarla/Bag/Bahçe) detay alanları ----
     CString LAND_ListingTitle;     // HTML'den (og:title / h1 / title)
@@ -115,6 +127,9 @@ public:
     // Ana Fonksiyon
     //bool ImportFromHtmlString(const CString& url, const std::string& htmlContent, LogFn log);
     CString ExtractIdFromUrl(const CString& url);
+
+    // Fetch property data by property ID
+    std::optional<IlanBilgisi> FetchByIlanNumarasi(const CString& ilanNumarasi);
 
 private:
     // JSON Yöntemi (Hızlı)

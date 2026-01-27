@@ -7,11 +7,12 @@
 
 #include <commctrl.h>
 #include "HomeFeaturesPage.h"
+#include "SimpleBrowser.h"
 
 class CHomeDialog : public CDialog
 {
 public:
-    // Yapýcý
+    // Yapï¿½cï¿½
     CHomeDialog(DatabaseManager& dbManagerRef, DialogMode mode, const CString& cariKod, const CString& homeCodeToEdit = _T(""));
     virtual ~CHomeDialog() override = default;
 
@@ -19,15 +20,16 @@ public:
     void SetCariKod(const CString& code) { m_cariKod = code; }
     void SetPropertyCode(const CString& code) { m_homeCodeToEdit = code; }
 
-    // Panodan Veri Çekme (Text Parse)
+    // Panodan Veri ï¿½ekme (Text Parse)
     void OnLoadFromClipboard();
+    void OnIlanBilgileriniAl();
     bool ValidateData(std::map<CString, CString>& dataMap);
-    // Yardýmcýlar
+    // Yardï¿½mcï¿½lar
     CString GetClipboardText();
     std::map<CString, CString> ParseSahibindenText(const CString& rawText);
     std::map<CString, CString> NormalizeToSchemaMap(const std::map<CString, CString>& rawFields);
     void SanitizeDataMap(std::map<CString, CString>& dataMap);
-    // Scroll yardýmcýlarý
+    // Scroll yardï¿½mcï¿½larï¿½
     void UpdateScrollInfo();
     int m_nVscrollPos = 0;
     int m_nHscrollPos = 0;
@@ -38,7 +40,7 @@ protected:
     virtual void OnOK() override;
     virtual INT_PTR DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) override;
 
-    void OnSetCtrl();     // ComboBox'larý doldurur
+    void OnSetCtrl();     // ComboBox'larï¿½ doldurur
     void FillCombo(int id, const std::vector<CString>& items);
 
 private:
@@ -51,11 +53,11 @@ private:
 
     void ApplyFontRecursive(HWND hWnd, HFONT hFont);
     void FixTabFonts();
-    // Seviye-2: Tab tabanlý özellikler
+    // Seviye-2: Tab tabanlï¿½ ï¿½zellikler
     HWND m_hTab = nullptr;
     CHomeFeaturesPage m_featuresPage1;
     CHomeFeaturesPage m_featuresPage2;
-    std::vector<HWND> m_generalControls; // Tab1'de gösterilecek olanlar
+    std::vector<HWND> m_generalControls; // Tab1'de gï¿½sterilecek olanlar
     bool m_layoutShifted = false;
 
     void InitTabs();
@@ -63,4 +65,12 @@ private:
     void ShiftGeneralControlsForTabHeader();
     void LayoutTabAndPages();
     void SwitchTab(int index);
+    
+    // Browser for fetching single property data
+    CSimpleBrowser m_browser;
+    bool m_browserInitialized = false;
+    CString m_pendingIlanNumarasi;
+    
+    void InitBrowserIfNeeded();
+    void FetchPropertyData(const CString& ilanNumarasi);
 };

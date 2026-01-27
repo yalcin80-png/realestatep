@@ -276,6 +276,8 @@
 #define IDC_EDIT_PAFTA                  2087
 #define IDC_EDIT_YETKI_BASLANGIC        2088
 #define IDC_EDIT_YETKI_BITIS            2089
+#define IDC_EDIT_ILANNUMARASI           2090
+#define IDC_BUTTON_ILANBILGIAL          2091
 #define IDD_LAND_DIALOG                 3000
 #define IDC_EDIT_LAND_CODE              3001
 #define IDC_EDIT_LAND_ADRES             3002
@@ -743,6 +745,14 @@
 #define IDM_STATUS_URGENT_LabelTitle_RESID 24231
 #define IDM_STATUS_PASSIVE              24240
 #define IDM_STATUS_PASSIVE_LabelTitle_RESID 24241
+#define IDM_STATUS_SOLD_NEW             24250
+#define IDM_STATUS_SOLD_NEW_LabelTitle_RESID 24251
+#define IDM_STATUS_WAITING              24260
+#define IDM_STATUS_WAITING_LabelTitle_RESID 24261
+#define IDM_STATUS_PRICE_TRACKING       24270
+#define IDM_STATUS_PRICE_TRACKING_LabelTitle_RESID 24271
+#define IDM_STATUS_PROBLEMATIC          24280
+#define IDM_STATUS_PROBLEMATIC_LabelTitle_RESID 24281
 #define IDM_FONT_CHANGE                 24300
 #define IDM_FONT_CHANGE_LabelTitle_RESID 24301
 #define IDM_ONOFFER_MENU                24310
