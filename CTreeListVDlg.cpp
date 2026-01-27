@@ -817,30 +817,12 @@ COLORREF CMyTreeListView::GetColorForStatus(const CString& status)
 }
 
 // --------------------------------------------------------
-// Modüler Yardımcı Fonksiyon: Tablo adına göre PK alan adını döndür
+// Görsel İyileştirme Fonksiyonları - Implementation  
+// Note: GetCodeFieldForTable is now inline in CTreeListVDlg.h
 // --------------------------------------------------------
-CString GetCodeFieldForTable(const CString& tableName)
-{
-    static const std::map<CString, CString, CStringLessNoCase> TABLE_CODE_FIELDS = {
-        { TABLE_NAME_HOME,       _T("Home_Code") },
-        { TABLE_NAME_LAND,       _T("Land_Code") },
-        { TABLE_NAME_FIELD,      _T("Field_Code") },
-        { TABLE_NAME_VINEYARD,   _T("Vineyard_Code") },
-        { TABLE_NAME_VILLA,      _T("Villa_Code") },
-        { TABLE_NAME_COMMERCIAL, _T("Commercial_Code") },
-        { TABLE_NAME_CAR,        _T("Car_Code") },
-        { TABLE_NAME_CUSTOMER,   _T("Cari_Kod") }
-    };
-
-    auto it = TABLE_CODE_FIELDS.find(tableName);
-    if (it != TABLE_CODE_FIELDS.end()) {
-        return it->second;
-    }
-    return _T("ID"); // Varsayılan
-}
 
 
-//void CMyTreeListView::ChangePropertyStatus(HTREEITEM hItem, UINT cmdId)
+void CMyTreeListView::ChangePropertyStatus(HTREEITEM hItem, UINT cmdId)
 //{
 //    // 1. Bilgileri Al
 //    TLV_Row* row = GetRow(hItem);

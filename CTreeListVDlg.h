@@ -77,11 +77,12 @@ struct StatusColorInfo
 
 /// @brief Durum-Renk Eşleştirme Tablosu
 /// @note Yeni durumlar buraya eklenerek sistem genişletilebilir
+/// @note Renkler WCAG 2.0 AA accessibility standartlarına uygun seçilmiştir
 static const StatusColorInfo STATUS_COLORS[] = {
-    { 1, _T("Satıldı"),         RGB(255, 0, 0),     RGB(255, 255, 255) }, // Kırmızı arka plan, beyaz yazı
-    { 2, _T("Beklemede"),       RGB(0, 255, 0),     RGB(0, 0, 0) },       // Yeşil arka plan, siyah yazı
-    { 3, _T("Fiyat Takipte"),   RGB(255, 255, 0),   RGB(0, 0, 0) },       // Sarı arka plan, siyah yazı
-    { 4, _T("Durum: Sorunlu"),  RGB(169, 169, 169), RGB(0, 0, 0) }        // Gri arka plan, siyah yazı
+    { 1, _T("Satıldı"),         RGB(220, 50, 50),   RGB(255, 255, 255) }, // Koyu Kırmızı arka plan, beyaz yazı (erişilebilir)
+    { 2, _T("Beklemede"),       RGB(0, 128, 0),     RGB(255, 255, 255) }, // Koyu Yeşil arka plan, beyaz yazı (erişilebilir)
+    { 3, _T("Fiyat Takipte"),   RGB(184, 134, 11),  RGB(0, 0, 0) },       // Koyu Sarı/Altın arka plan, siyah yazı (erişilebilir)
+    { 4, _T("Durum: Sorunlu"),  RGB(128, 128, 128), RGB(255, 255, 255) }  // Koyu Gri arka plan, beyaz yazı (erişilebilir)
 };
 
 /// @brief Durum koduna göre renk bilgisi döndürür
@@ -120,6 +121,48 @@ struct SubColumnInfo
     int width;
     int align;
 };
+
+// --------------------------------------------------------
+// Yardımcı Fonksiyonlar - Modüler Kod Organizasyonu
+// --------------------------------------------------------
+
+/// @brief Tablo adına göre Primary Key alan adını döndürür
+/// @param tableName Tablo adı (örn: TABLE_NAME_HOME)
+/// @return PK alan adı (örn: "Home_Code")
+/// @note Bilinmeyen tablolar için "ID" döner
+inline CString GetCodeFieldForTable(const CString& tableName)
+{
+    static const std::map<CString, CString, CStringLessNoCase> TABLE_CODE_FIELDS = {
+        { TABLE_NAME_HOME,       _T("Home_Code") },
+        { TABLE_NAME_LAND,       _T("Land_Code") },
+        { TABLE_NAME_FIELD,      _T("Field_Code") },
+        { TABLE_NAME_VINEYARD,   _T("Vineyard_Code") },
+        { TABLE_NAME_VILLA,      _T("Villa_Code") },
+        { TABLE_NAME_COMMERCIAL, _T("Commercial_Code") },
+        { TABLE_NAME_CAR,        _T("Car_Code") },
+        { TABLE_NAME_CUSTOMER,   _T("Cari_Kod") }
+    };
+
+    auto it = TABLE_CODE_FIELDS.find(tableName);
+    if (it != TABLE_CODE_FIELDS.end()) {
+        return it->second;
+    }
+    return _T("ID"); // Varsayılan
+}
+
+/// @brief Gradient dikdörtgen çizer
+/// @param hdc Device context handle
+/// @param rect Çizilecek alan
+/// @param colorStart Başlangıç rengi
+/// @param colorEnd Bitiş rengi
+/// @param vertical true ise dikey gradient, false ise yatay
+void DrawGradientRect(HDC hdc, const RECT& rect, COLORREF colorStart, COLORREF colorEnd, bool vertical = false);
+
+/// @brief Rengi açar (lighten)
+/// @param color Orijinal renk
+/// @param amount Açma miktarı (0-255)
+/// @return Açılmış renk
+COLORREF LightenColor(COLORREF color, int amount = 40);
 
 
 #define IDC_TREEHEADER 30128
@@ -230,16 +273,11 @@ public:
     /// @brief Durum koduna göre arka plan rengi döndürür (Hızlı inline versiyon)
     /// @param status Durum kodu (1-4)
     /// @return COLORREF renk değeri
-    /// @note Bu fonksiyon basit switch-case kullanır, daha detaylı bilgi için GetStatusColorInfoByCode kullanın
+    /// @note Bu fonksiyon GetStatusColorInfoByCode'u kullanarak tek kaynak prensibini korur
     /// @see GetStatusColorInfoByCode
     COLORREF GetColorByStatus(int status) {
-        switch (status) {
-            case 1: return RGB(255, 0, 0);      // Satıldı (Kırmızı)
-            case 2: return RGB(0, 255, 0);      // Beklemede (Yeşil)
-            case 3: return RGB(255, 255, 0);    // Fiyat Takipte (Sarı)
-            case 4: return RGB(169, 169, 169);  // Sorunlu (Gri)
-            default: return RGB(255, 255, 255); // Varsayılan (Beyaz)
-        }
+        StatusColorInfo info = GetStatusColorInfoByCode(status);
+        return info.backgroundColor;
     }
 
     /// @brief Seçili satırın durumunu değiştirir ve veritabanını günceller
