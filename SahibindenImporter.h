@@ -39,6 +39,17 @@ struct SahibindenListingPayload
     CString contactName;
     CString contactPhone;
     CString featuresText;
+    
+    // ---- NEW: Categorized Features (Images 2-3-4) ----
+    CString facades;              // Cephe (multiple)
+    CString featuresInterior;     // İç Özellikler (multiple)
+    CString featuresExterior;     // Dış Özellikler (multiple)
+    CString featuresNeighborhood; // Muhit (multiple)
+    CString featuresTransport;    // Ulaşım (multiple)
+    CString featuresView;         // Manzara (multiple)
+    CString housingType;          // Konut Tipi (usually single)
+    CString featuresAccessibility;// Engelli ve Yaşlıya Uygun (multiple)
+    
     // ---- LAND (Arsa/Tarla/Bag/Bahçe) ----
 // ---- LAND (Arsa/Tarla/Bag/Bahçe) detay alanları ----
     CString LAND_ListingTitle;     // HTML'den (og:title / h1 / title)
