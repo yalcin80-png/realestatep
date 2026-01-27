@@ -177,6 +177,11 @@ BEGIN
             MENUITEM "Fiyat Düştü",                 IDM_STATUS_PRICE_DOWN
             MENUITEM "Acil Satılık",                IDM_STATUS_URGENT
             MENUITEM "Pasif / İptal",               IDM_STATUS_PASSIVE
+            MENUITEM SEPARATOR
+            MENUITEM "Satıldı (Kırmızı)",           IDM_STATUS_SOLD_NEW
+            MENUITEM "Beklemede (Yeşil)",           IDM_STATUS_WAITING
+            MENUITEM "Fiyat Takipte (Sarı)",        IDM_STATUS_PRICE_TRACKING
+            MENUITEM "Durum: Sorunlu (Gri)",        IDM_STATUS_PROBLEMATIC
         END
         POPUP "Baskı Önizleme"
         BEGIN

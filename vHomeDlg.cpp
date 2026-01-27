@@ -770,6 +770,8 @@ INT_PTR CHomeDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
         {
             int sel = TabCtrl_GetCurSel(m_hTab);
             if (sel < 0) sel = 0;
+            // Layout pages before switching to ensure proper sizing
+            LayoutTabAndPages();
             SwitchTab(sel);
             return TRUE;
         }
@@ -956,10 +958,6 @@ INT_PTR CHomeDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
     case WM_SIZE:
         UpdateScrollInfo();
-        break;
-    }
-    if (uMsg == WM_SIZE)
-    {
         LayoutTabAndPages();
         return FALSE; // default i�lemler devam edebilir
     }

@@ -166,7 +166,9 @@ public:
 
 private:
     // Durum
+public:
     bool    m_bBestFit = true;
+private:
     HBITMAP m_hbitmap = nullptr;
 
     int m_cxCenter = 1;
@@ -181,7 +183,9 @@ private:
     int  m_yPosMouse = 0;
 
     MODE m_modeDefault = MODE_ZOOMIN;
+public:
     PTSZ m_ptszDest{ 0,0,1,1 };
+private:
     bool m_fPanning = false;
     bool m_fCtrlDown = false;
     bool m_fShiftDown = false;
