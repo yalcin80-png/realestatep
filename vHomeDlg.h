@@ -22,7 +22,7 @@ public:
 
     // Panodan Veri �ekme (Text Parse)
     void OnLoadFromClipboard();
-    void OnIlanBilgileriniAl();
+    void OnFetchListingClicked();
     bool ValidateData(std::map<CString, CString>& dataMap);
     // Yard�mc�lar
     CString GetClipboardText();

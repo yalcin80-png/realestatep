@@ -18,16 +18,6 @@ namespace {
     constexpr int kHomeTabId = 5001;
     constexpr int kTabHeaderReservePx = 24; // mevcut UI'yi a�a�� itmek i�in
     constexpr int kBottomSectionTop = 375;  // Resource.rc'deki �izgi �st s�n�r�
-    
-    // Property fetch timer constants
-    constexpr UINT_PTR kPropertyFetchTimerId = 9999;
-    constexpr DWORD kPropertyFetchDelayMs = 3000; // 3 seconds
-    
-    // Browser positioning constants (off-screen)
-    constexpr int kBrowserOffScreenLeft = -10;
-    constexpr int kBrowserOffScreenTop = -10;
-    constexpr int kBrowserOffScreenRight = -5;
-    constexpr int kBrowserOffScreenBottom = -5;
 }
 
 // K���k Yard�mc�lar
@@ -363,6 +353,40 @@ void CHomeDialog::OnLoadFromClipboard() {
     m_dbManager.Bind_Data_To_UI(this, TABLE_NAME_HOME, currentData);
 
     MessageBox(_T("Veriler aktar�ld�."), _T("Tamam"), MB_ICONINFORMATION);
+}
+
+void CHomeDialog::OnFetchListingClicked() {
+    // 1. İlan No'yu oku
+    CString listingNo = GetTextSafe(*this, IDC_EDIT_ILAN_NO);
+    if (listingNo.IsEmpty()) {
+        MessageBox(_T("Lütfen bir İlan Numarası girin."), _T("Uyarı"), MB_ICONWARNING);
+        return;
+    }
+
+    // 2. Sahibinden URL'ini oluştur
+    CString url;
+    url.Format(_T("https://www.sahibinden.com/ilan/%s"), listingNo);
+
+    // 3. Kullanıcıya rehberlik et
+    CString msg;
+    msg.Format(_T("İlan No: %s\n")
+               _T("URL: %s\n\n")
+               _T("Otomatik veri çekme için iki seçeneğiniz var:\n\n")
+               _T("1. HAREKETSİZ İLANLAR İÇİN:\n")
+               _T("   • Bu dialogu kapatın\n")
+               _T("   • Ana menüden 'Araçlar > Sahibinden İçe Aktar' seçin\n")
+               _T("   • İlan URL'sini girin ve 'Veri Çek' butonuna tıklayın\n")
+               _T("   • Ardından bu dialogu açıp kaydı düzenleyin\n\n")
+               _T("2. EL İLE KOPYALA-YAPIŞTIR:\n")
+               _T("   • Sahibinden'den ilan metnini kopyalayın\n")
+               _T("   • 'Panodan Yükle' butonuna tıklayın\n\n")
+               _T("Gelecek sürümde bu buton otomatik çekme yapacak."),
+               listingNo, url);
+    
+    MessageBox(msg, _T("İlan Bilgisi Nasıl Alınır?"), MB_ICONINFORMATION);
+
+    // TODO: Future enhancement - implement WebView2-based automatic fetching
+    // See: SahibindenImportDlg for reference implementation
 }
 
 // ============================================================================
@@ -758,8 +782,8 @@ INT_PTR CHomeDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
         return TRUE;
     }
 
-    if (uMsg == WM_COMMAND && LOWORD(wParam) == IDC_BUTTON_ILANBILGIAL) {
-        OnIlanBilgileriniAl();
+    if (uMsg == WM_COMMAND && LOWORD(wParam) == IDC_BTN_FETCH_LISTING) {
+        OnFetchListingClicked();
         return TRUE;
     }
 
