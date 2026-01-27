@@ -3,6 +3,7 @@
 #include <regex>
 #include <vector>
 #include <unordered_map>
+#include <optional>
 #include "json.hpp"
 
 using json = nlohmann::json;
@@ -316,16 +317,95 @@ bool SahibindenImporter::ImportFromJsonAndHtmlString(const CString& url,
 
             payload.LAND_Takas = PickFirstW(customVars, { L"Takas" }, dmpData, { L"takas" });
 
+            // ---- VILLA-specific fields ----
+            // Açık Alan m² is specific to villas (outdoor area)
+            payload.VILLA_AcikAlanM2 = PickFirstW(
+                customVars, { L"Açık Alan m²", L"Açık Alan", L"Acik Alan m2" },
+                dmpData, { L"acik_alan_m2", L"outdoor_area" }
+            );
 
-
+            // ---- CAR/VEHICLE (Araç) teknik alanlar ----
+            // Brand and model information
+            payload.CAR_Brand = PickFirstW(
+                customVars, { L"Marka" },
+                dmpData, { L"marka", L"brand" }
+            );
+            payload.CAR_Series = PickFirstW(
+                customVars, { L"Seri" },
+                dmpData, { L"seri", L"series" }
+            );
+            payload.CAR_Model = PickFirstW(
+                customVars, { L"Model" },
+                dmpData, { L"model" }
+            );
+            payload.CAR_Year = PickFirstW(
+                customVars, { L"Yıl", L"Model Yılı" },
+                dmpData, { L"yil", L"year", L"model_yili" }
+            );
+            
+            // Mileage
+            payload.CAR_Km = PickFirstW(
+                customVars, { L"KM", L"Kilometre" },
+                dmpData, { L"km", L"kilometre" }
+            );
+            
+            // Engine and fuel
+            payload.CAR_FuelType = PickFirstW(
+                customVars, { L"Yakıt Tipi", L"Yakıt" },
+                dmpData, { L"yakit_tipi", L"yakit", L"fuel_type" }
+            );
+            payload.CAR_Transmission = PickFirstW(
+                customVars, { L"Vites Tipi", L"Vites" },
+                dmpData, { L"vites_tipi", L"vites", L"transmission" }
+            );
+            payload.CAR_EngineVolume = PickFirstW(
+                customVars, { L"Motor Hacmi" },
+                dmpData, { L"motor_hacmi", L"engine_volume" }
+            );
+            payload.CAR_EnginePower = PickFirstW(
+                customVars, { L"Motor Gücü" },
+                dmpData, { L"motor_gucu", L"engine_power" }
+            );
+            
+            // Drive and body
+            payload.CAR_Drive = PickFirstW(
+                customVars, { L"Çekiş" },
+                dmpData, { L"cekis", L"drive" }
+            );
+            payload.CAR_BodyType = PickFirstW(
+                customVars, { L"Kasa Tipi" },
+                dmpData, { L"kasa_tipi", L"body_type" }
+            );
+            payload.CAR_Color = PickFirstW(
+                customVars, { L"Renk" },
+                dmpData, { L"renk", L"color" }
+            );
+            
+            // Additional vehicle info
+            payload.CAR_DamageRecord = PickFirstW(
+                customVars, { L"Hasar Kaydı", L"Hasarlı" },
+                dmpData, { L"hasar_kaydi", L"damage_record" }
+            );
+            payload.CAR_Warranty = PickFirstW(
+                customVars, { L"Garanti", L"Garanti Durumu" },
+                dmpData, { L"garanti", L"warranty" }
+            );
+            payload.CAR_Plate = PickFirstW(
+                customVars, { L"Plaka" },
+                dmpData, { L"plaka", L"plate" }
+            );
+            payload.CAR_VehicleCondition = PickFirstW(
+                customVars, { L"Araç Durumu", L"Vasıta Durumu" },
+                dmpData, { L"arac_durumu", L"vehicle_condition", L"vasita_durumu" }
+            );
 
 
             if (payload.listingNo.IsEmpty()) payload.listingNo = ExtractIdFromUrl(url);
             jsonSuccess = true;
-            if (log) log(_T("JSON Analizi Başarılı."));
+            if (log) log(_T("JSON Analysis Successful."));
         }
         catch (...) {
-            if (log) log(_T("JSON Ayrıştırılamadı."));
+            if (log) log(_T("JSON Parse Failed."));
         }
     }
 
@@ -504,7 +584,25 @@ bool SahibindenImporter::ParseHtmlDirectly(const CString& url, const std::wstrin
         else if (label.find(L"Kaks") != std::wstring::npos) p.LAND_KaksEmsal = ToCString(value);
         else if (label.find(L"Gabari") != std::wstring::npos) p.LAND_Gabari = ToCString(value);
         else if (label.find(L"Krediye Uygunluk") != std::wstring::npos) p.LAND_KrediUygunluk = ToCString(value);
-
+        // Villa-specific
+        else if (label.find(L"Açık Alan") != std::wstring::npos) p.VILLA_AcikAlanM2 = ToCString(value);
+        // Car/Vehicle fields
+        else if (label.find(L"Marka") != std::wstring::npos) p.CAR_Brand = ToCString(value);
+        else if (label.find(L"Seri") != std::wstring::npos) p.CAR_Series = ToCString(value);
+        else if (label.find(L"Model") != std::wstring::npos) p.CAR_Model = ToCString(value);
+        else if (label.find(L"Yıl") != std::wstring::npos) p.CAR_Year = ToCString(value);
+        else if (label.find(L"KM") != std::wstring::npos || label.find(L"Kilometre") != std::wstring::npos) p.CAR_Km = ToCString(value);
+        else if (label.find(L"Yakıt") != std::wstring::npos) p.CAR_FuelType = ToCString(value);
+        else if (label.find(L"Vites") != std::wstring::npos) p.CAR_Transmission = ToCString(value);
+        else if (label.find(L"Motor Hacmi") != std::wstring::npos) p.CAR_EngineVolume = ToCString(value);
+        else if (label.find(L"Motor Gücü") != std::wstring::npos) p.CAR_EnginePower = ToCString(value);
+        else if (label.find(L"Çekiş") != std::wstring::npos) p.CAR_Drive = ToCString(value);
+        else if (label.find(L"Kasa Tipi") != std::wstring::npos) p.CAR_BodyType = ToCString(value);
+        else if (label.find(L"Renk") != std::wstring::npos) p.CAR_Color = ToCString(value);
+        else if (label.find(L"Hasar") != std::wstring::npos) p.CAR_DamageRecord = ToCString(value);
+        else if (label.find(L"Garanti") != std::wstring::npos) p.CAR_Warranty = ToCString(value);
+        else if (label.find(L"Plaka") != std::wstring::npos) p.CAR_Plate = ToCString(value);
+        else if (label.find(L"Araç Durumu") != std::wstring::npos || label.find(L"Vasıta Durumu") != std::wstring::npos) p.CAR_VehicleCondition = ToCString(value);
 
 
     }
@@ -609,7 +707,29 @@ bool SahibindenImporter::ParseTrackingJson(const CString& url, const std::wstrin
         p.LAND_Kimden = PickFirstW(customVars, { L"Kimden" }, dmpData, { L"kimden" });
         p.LAND_Takas = PickFirstW(customVars, { L"Takas" }, dmpData, {});
 
+        // ---- VILLA-specific fields ----
+        p.VILLA_AcikAlanM2 = PickFirstW(
+            customVars, { L"Açık Alan m²", L"Açık Alan", L"Acik Alan m2" },
+            dmpData, { L"acik_alan_m2", L"outdoor_area" }
+        );
 
+        // ---- CAR/VEHICLE technical fields ----
+        p.CAR_Brand = PickFirstW(customVars, { L"Marka" }, dmpData, { L"marka", L"brand" });
+        p.CAR_Series = PickFirstW(customVars, { L"Seri" }, dmpData, { L"seri", L"series" });
+        p.CAR_Model = PickFirstW(customVars, { L"Model" }, dmpData, { L"model" });
+        p.CAR_Year = PickFirstW(customVars, { L"Yıl", L"Model Yılı" }, dmpData, { L"yil", L"year", L"model_yili" });
+        p.CAR_Km = PickFirstW(customVars, { L"KM", L"Kilometre" }, dmpData, { L"km", L"kilometre" });
+        p.CAR_FuelType = PickFirstW(customVars, { L"Yakıt Tipi", L"Yakıt" }, dmpData, { L"yakit_tipi", L"yakit", L"fuel_type" });
+        p.CAR_Transmission = PickFirstW(customVars, { L"Vites Tipi", L"Vites" }, dmpData, { L"vites_tipi", L"vites", L"transmission" });
+        p.CAR_EngineVolume = PickFirstW(customVars, { L"Motor Hacmi" }, dmpData, { L"motor_hacmi", L"engine_volume" });
+        p.CAR_EnginePower = PickFirstW(customVars, { L"Motor Gücü" }, dmpData, { L"motor_gucu", L"engine_power" });
+        p.CAR_Drive = PickFirstW(customVars, { L"Çekiş" }, dmpData, { L"cekis", L"drive" });
+        p.CAR_BodyType = PickFirstW(customVars, { L"Kasa Tipi" }, dmpData, { L"kasa_tipi", L"body_type" });
+        p.CAR_Color = PickFirstW(customVars, { L"Renk" }, dmpData, { L"renk", L"color" });
+        p.CAR_DamageRecord = PickFirstW(customVars, { L"Hasar Kaydı", L"Hasarlı" }, dmpData, { L"hasar_kaydi", L"damage_record" });
+        p.CAR_Warranty = PickFirstW(customVars, { L"Garanti", L"Garanti Durumu" }, dmpData, { L"garanti", L"warranty" });
+        p.CAR_Plate = PickFirstW(customVars, { L"Plaka" }, dmpData, { L"plaka", L"plate" });
+        p.CAR_VehicleCondition = PickFirstW(customVars, { L"Araç Durumu", L"Vasıta Durumu" }, dmpData, { L"arac_durumu", L"vehicle_condition", L"vasita_durumu" });
 
 
 
@@ -665,10 +785,18 @@ bool SahibindenImporter::ExtractContactFromHtml(const std::wstring& html, Sahibi
 }
 
 bool SahibindenImporter::ExtractFeaturesFromHtml(const std::wstring& html, SahibindenListingPayload& ioPayload) {
-    std::wregex reLi(L"<li[^>]*class=\"selected\"[^>]*>\\s*([^<]+)\\s*</li>");
-    auto begin = std::wsregex_iterator(html.begin(), html.end(), reLi);
+    // Constants for HTML parsing
+    const size_t MAX_SECTION_SEARCH_LENGTH = 2000;  // Maximum characters to search after section heading
+    const size_t MAX_LIST_CONTENT_LENGTH = 1500;    // Maximum characters to parse within a list
+    
+    // Regex pattern to match selected list items (e.g., <li class="selected">Feature Name</li>)
+    static const std::wregex SELECTED_ITEM_REGEX(L"<li[^>]*class=\"[^\"]*selected[^\"]*\"[^>]*>\\s*([^<]+)\\s*</li>");
+    
+    // Extract all selected features first (for backward compatibility)
+    auto begin = std::wsregex_iterator(html.begin(), html.end(), SELECTED_ITEM_REGEX);
     auto end = std::wsregex_iterator();
     CString features;
+    
     for (auto it = begin; it != end; ++it) {
         std::wstring item = (*it)[1].str();
         if (item.length() > 2) {
@@ -677,6 +805,84 @@ bool SahibindenImporter::ExtractFeaturesFromHtml(const std::wstring& html, Sahib
         }
     }
     ioPayload.featuresText = features;
+    
+    // Extract categorized features by looking for section headers in HTML
+    // Sahibinden.com typically uses structure like:
+    // <h3 class="classified-detail-info-list-title">Cephe</h3>
+    // <ul>
+    //   <li class="selected">Batı</li>
+    //   <li class="selected">Güney</li>
+    // </ul>
+    
+    auto ExtractFeaturesInSection = [&](const std::vector<std::wstring>& sectionNames) -> CString {
+        for (const auto& sectionName : sectionNames) {
+            // Try multiple patterns for section headers
+            std::vector<std::wstring> patterns = {
+                // Pattern 1: <h3...>Section Name</h3>
+                L"<h3[^>]*>\\s*" + sectionName + L"[^<]*</h3>",
+                // Pattern 2: <h4...>Section Name</h4>
+                L"<h4[^>]*>\\s*" + sectionName + L"[^<]*</h4>",
+                // Pattern 3: <span...>Section Name</span>
+                L"<span[^>]*class=\"[^\"]*title[^\"]*\"[^>]*>\\s*" + sectionName + L"[^<]*</span>"
+            };
+            
+            for (const auto& pattern : patterns) {
+                std::wregex reSection(pattern, std::regex_constants::icase);
+                std::wsmatch match;
+                
+                if (std::regex_search(html, match, reSection)) {
+                    // Find the position after the heading
+                    size_t pos = match.position() + match.length();
+                    size_t searchLen = std::min(MAX_SECTION_SEARCH_LENGTH, html.length() - pos);
+                    std::wstring afterHeading = html.substr(pos, searchLen);
+                    
+                    // Look for the next <ul> or list container
+                    std::wregex reUlStart(L"<ul[^>]*>");
+                    std::wsmatch ulMatch;
+                    if (std::regex_search(afterHeading, ulMatch, reUlStart)) {
+                        size_t ulPos = ulMatch.position() + ulMatch.length();
+                        std::wstring listContent = afterHeading.substr(ulPos, std::min(MAX_LIST_CONTENT_LENGTH, afterHeading.length() - ulPos));
+                        
+                        // Find closing </ul>
+                        size_t ulEnd = listContent.find(L"</ul>");
+                        if (ulEnd != std::wstring::npos) {
+                            listContent = listContent.substr(0, ulEnd);
+                        }
+                        
+                        // Extract selected items in this list (reuse the shared regex pattern)
+                        auto liBegin = std::wsregex_iterator(listContent.begin(), listContent.end(), SELECTED_ITEM_REGEX);
+                        auto liEnd = std::wsregex_iterator();
+                        
+                        CString result;
+                        for (auto it = liBegin; it != liEnd; ++it) {
+                            std::wstring item = (*it)[1].str();
+                            if (item.length() > 1) {
+                                if (!result.IsEmpty()) result += _T(", ");
+                                result += ToCString(HtmlEntityDecode(item));
+                            }
+                        }
+                        
+                        if (!result.IsEmpty()) {
+                            return result;
+                        }
+                    }
+                }
+            }
+        }
+        return _T("");
+    };
+    
+    // Extract features by category with fallback names
+    // Using multiple variations to handle different page versions
+    ioPayload.facades = ExtractFeaturesInSection({L"Cephe", L"Facade"});
+    ioPayload.featuresInterior = ExtractFeaturesInSection({L"İç Özellikler", L"Ic Ozellikler", L"Interior Features"});
+    ioPayload.featuresExterior = ExtractFeaturesInSection({L"Dış Özellikler", L"Dis Ozellikler", L"Exterior Features"});
+    ioPayload.featuresNeighborhood = ExtractFeaturesInSection({L"Muhit", L"Neighborhood", L"Çevre"});
+    ioPayload.featuresTransport = ExtractFeaturesInSection({L"Ulaşım", L"Ulasim", L"Transportation"});
+    ioPayload.featuresView = ExtractFeaturesInSection({L"Manzara", L"View"});
+    ioPayload.featuresAccessibility = ExtractFeaturesInSection({L"Engelli", L"Yaşlı", L"Erişilebilir", L"Accessibility"});
+    ioPayload.housingType = ExtractFeaturesInSection({L"Konut Tipi", L"Housing Type"});
+    
     return true;
 }
 
@@ -761,8 +967,25 @@ bool SahibindenImporter::SaveToDatabase(const SahibindenListingPayload& p, LogFn
         return isType(_T("arsa")) || (cat2 == _T("arsa"));
         };
 
-
-
+    auto isCar = [&]() -> bool {
+        // Check if it's a vehicle/car listing
+        // Priority 1: URL pattern (most reliable)
+        if (urlLower.Find(_T("/vasita/")) != -1 ||
+            urlLower.Find(_T("/otomobil/")) != -1 ||
+            urlLower.Find(_T("/araba/")) != -1) {
+            return true;
+        }
+        // Priority 2: Must have at least Brand AND Model together (stronger signal)
+        // KM alone is too weak - could be distance in property descriptions
+        if (!p.CAR_Brand.IsEmpty() && !p.CAR_Model.IsEmpty()) {
+            return true;
+        }
+        // Priority 3: Has multiple car-specific fields (transmission + fuel type)
+        if (!p.CAR_Transmission.IsEmpty() && !p.CAR_FuelType.IsEmpty()) {
+            return true;
+        }
+        return false;
+        };
 
 
 
@@ -813,6 +1036,73 @@ bool SahibindenImporter::SaveToDatabase(const SahibindenListingPayload& p, LogFn
         r.Updated_At = db.GetCurrentIsoUtc();
         r.Deleted = _T("0");
         r.Status = _T("1");
+        return db.InsertGlobal(r);
+    }
+
+    // --- CAR/VEHICLE (Araç) ---
+    if (isCar())
+    {
+        Car_cstr r{};
+        r.Cari_Kod = custCari;
+        r.Car_Code = db.GenerateNextCarCode();
+        
+        // Listing information
+        r.ListingNo = p.listingNo;
+        r.ListingDate = p.listingDate;
+        r.WebsiteName = _T("sahibinden");
+        r.ListingURL = p.listingUrl;
+        
+        // Title from CAR_Title or listing title
+        if (!p.CAR_Title.IsEmpty()) {
+            r.Title = p.CAR_Title;
+        } else if (!p.LAND_ListingTitle.IsEmpty()) {
+            r.Title = p.LAND_ListingTitle;
+        }
+        
+        // Vehicle specifications
+        r.Brand = p.CAR_Brand;             // Marka
+        r.Series = p.CAR_Series;           // Seri
+        r.Model = p.CAR_Model;             // Model
+        r.Year = p.CAR_Year;               // Yıl
+        r.Km = p.CAR_Km;                   // Kilometre
+        r.Price = priceNorm;
+        r.Currency = currency;
+        
+        // Engine and transmission
+        r.FuelType = p.CAR_FuelType;       // Yakıt Tipi
+        r.Transmission = p.CAR_Transmission; // Vites Tipi
+        r.EngineVolume = p.CAR_EngineVolume; // Motor Hacmi
+        r.EnginePower = p.CAR_EnginePower;   // Motor Gücü
+        r.Drive = p.CAR_Drive;             // Çekiş
+        r.BodyType = p.CAR_BodyType;       // Kasa Tipi
+        r.Color = p.CAR_Color;             // Renk
+        
+        // Condition and warranty
+        r.DamageRecord = p.CAR_DamageRecord;   // Hasar Kaydı
+        r.Warranty = p.CAR_Warranty;           // Garanti
+        r.Plate = p.CAR_Plate;                 // Plaka
+        r.VehicleCondition = p.CAR_VehicleCondition; // Araç Durumu
+        
+        // Location
+        r.City = p.city;
+        r.District = p.district;
+        r.Neighborhood = p.neighborhood;
+        
+        // Seller information
+        r.SellerName = p.contactName;
+        r.SellerPhone = p.contactPhone;
+        
+        // Additional attributes
+        r.SetAttr("website", _T("sahibinden"));
+        r.SetAttr("listing_url", p.listingUrl);
+        r.SetAttr("features", p.featuresText);
+        r.SetAttr("price_raw", priceRaw);
+        
+        r.sync_id = db.GenerateSyncId();
+        r.Updated_At = db.GetCurrentIsoUtc();
+        r.Deleted = _T("0");
+        r.Status = _T("1");
+        
         return db.InsertGlobal(r);
     }
 
@@ -874,12 +1164,44 @@ bool SahibindenImporter::SaveToDatabase(const SahibindenListingPayload& p, LogFn
         Villa_cstr r{};
         r.Cari_Kod = custCari;
         r.Villa_Code = db.GenerateNextVillaCode();
+        
+        // Basic information
         r.Adres = addr;
         r.OdaSayisi = p.roomCount;
         r.NetMetrekare = p.m2Net;
         r.BrutMetrekare = p.m2Brut;
         r.Fiyat = priceNorm;
         r.Currency = currency;
+        
+        // Villa-specific fields (from Villa_cstr struct in dataIsMe.h)
+        r.ListingNo = p.listingNo;
+        r.ListingDate = p.listingDate;
+        r.PropertyType = p.emlakTipi;
+        r.ListingURL = p.listingUrl;
+        r.WebsiteName = _T("sahibinden");
+        
+        // Seller info
+        r.SellerName = p.contactName;
+        r.SellerPhone = p.contactPhone;
+        
+        // Additional villa fields
+        r.AcikAlanM2 = p.VILLA_AcikAlanM2;     // CRITICAL: Açık Alan m² (outdoor area)
+        r.BuildingAge = p.buildingAge;
+        r.HeatingType = p.heating;
+        r.BathroomCount = p.bathroomCount;
+        r.KitchenType = p.kitchen;
+        r.Parking = p.parking;
+        r.Furnished = p.furnished;
+        r.UsageStatus = p.usageStatus;
+        r.InSite = p.inSite;
+        r.SiteName = p.siteName;
+        r.Dues = p.dues;
+        r.CreditEligible = p.creditEligible;
+        r.DeedStatus = p.deedStatus;
+        r.SellerType = p.sellerType;
+        r.Swap = p.swap;
+        r.Description = p.featuresText;
+        
         r.SetAttr("listing_no", p.listingNo);
         r.SetAttr("listing_date", p.listingDate);
         r.SetAttr("property_type", p.emlakTipi);
@@ -887,6 +1209,8 @@ bool SahibindenImporter::SaveToDatabase(const SahibindenListingPayload& p, LogFn
         r.SetAttr("listing_url", p.listingUrl);
         r.SetAttr("features", p.featuresText);
         r.SetAttr("price_raw", priceRaw);
+        r.SetAttr("balcony", p.balcony);
+        r.SetAttr("elevator", p.elevator);
         r.sync_id = db.GenerateSyncId();
         r.Updated_At = db.GetCurrentIsoUtc();
         r.Deleted = _T("0");
@@ -956,10 +1280,41 @@ bool SahibindenImporter::SaveToDatabase(const SahibindenListingPayload& p, LogFn
     h.WebsiteName = _T("sahibinden");
     h.ListingURL = p.listingUrl;
     h.NoteGeneral = p.featuresText;
+    
+    // Map new categorized features (Images 2-3-4)
+    h.Facades = p.facades;
+    h.FeaturesInterior = p.featuresInterior;
+    h.FeaturesExterior = p.featuresExterior;
+    h.FeaturesNeighborhood = p.featuresNeighborhood;
+    h.FeaturesTransport = p.featuresTransport;
+    h.FeaturesView = p.featuresView;
+    h.HousingType = p.housingType;
+    h.FeaturesAccessibility = p.featuresAccessibility;
+    
     h.SetAttr("price_raw", priceRaw);
     h.sync_id = db.GenerateSyncId();
     h.Updated_At = db.GetCurrentIsoUtc();
     h.Deleted = _T("0");
     h.Status = _T("1");
     return db.InsertGlobal(h);
+}
+
+// Fetch property data by property ID
+std::optional<IlanBilgisi> SahibindenImporter::FetchByIlanNumarasi(const CString& ilanNumarasi) {
+    try {
+        // Construct URL from property ID
+        // std::wstring url = L"https://www.sahibinden.com/ilan/" + std::wstring(ilanNumarasi.GetString());
+        
+        // Note: In a real implementation, you would use an HTTP client to download the HTML
+        // For now, this is a placeholder that returns nullopt since we don't have HTTP capabilities
+        // The actual implementation would require:
+        // 1. HTTP client to download HTML from the URL
+        // 2. HTML parser to extract data from specific selectors
+        // 3. Populate IlanBilgisi struct with extracted data
+        
+        // Return nullopt to indicate data fetching is not implemented
+        return std::nullopt;
+    } catch (...) {
+        return std::nullopt;
+    }
 }

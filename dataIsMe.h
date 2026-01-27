@@ -95,6 +95,14 @@ const CString TABLE_NAMES[] = {
     _T("Appointments")
 };
 //const int NUM_TABLES = sizeof(TABLE_NAMES) / sizeof(TABLE_NAMES[0]);
+
+// IlanBilgisi struct for SahibindenImporter
+struct IlanBilgisi {
+    std::wstring Baslik;
+    std::wstring Fiyat;
+    std::wstring Aciklama;
+};
+
 // --- CUSTOMER ---
 struct Customer_cstr
 {

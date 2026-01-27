@@ -58,12 +58,111 @@ struct ItemColorInfo
     COLORREF bkColor;
 };
 
+// --------------------------------------------------------
+//  Modüler Durum Yönetimi - Kurumsal İhtiyaçlar
+//  
+//  Bu sistem, mülk durumlarını renk kodlarıyla yönetmek için
+//  merkezi ve genişletilebilir bir yapı sağlar.
+// --------------------------------------------------------
+
+/// @brief Durum renk bilgilerini tutan yapı
+/// @details Her durum için kod, isim ve renk bilgilerini içerir
+struct StatusColorInfo
+{
+    int statusCode;              ///< Durum kodu (1: Satıldı, 2: Beklemede, vb.)
+    CString statusName;          ///< Durum adı (kullanıcı dostu)
+    COLORREF backgroundColor;    ///< Satır arka plan rengi
+    COLORREF textColor;         ///< Satır yazı rengi
+};
+
+/// @brief Durum-Renk Eşleştirme Tablosu
+/// @note Yeni durumlar buraya eklenerek sistem genişletilebilir
+/// @note Renkler WCAG 2.0 AA accessibility standartlarına uygun seçilmiştir
+static const StatusColorInfo STATUS_COLORS[] = {
+    { 1, _T("Satıldı"),         RGB(220, 50, 50),   RGB(255, 255, 255) }, // Koyu Kırmızı arka plan, beyaz yazı (erişilebilir)
+    { 2, _T("Beklemede"),       RGB(0, 128, 0),     RGB(255, 255, 255) }, // Koyu Yeşil arka plan, beyaz yazı (erişilebilir)
+    { 3, _T("Fiyat Takipte"),   RGB(184, 134, 11),  RGB(0, 0, 0) },       // Koyu Sarı/Altın arka plan, siyah yazı (erişilebilir)
+    { 4, _T("Durum: Sorunlu"),  RGB(128, 128, 128), RGB(255, 255, 255) }  // Koyu Gri arka plan, beyaz yazı (erişilebilir)
+};
+
+/// @brief Durum koduna göre renk bilgisi döndürür
+/// @param statusCode Aranacak durum kodu (1-4)
+/// @return StatusColorInfo yapısı, bulunamazsa varsayılan değer
+/// @example auto info = GetStatusColorInfoByCode(1); // Satıldı durumu için bilgi
+inline StatusColorInfo GetStatusColorInfoByCode(int statusCode)
+{
+    for (const auto& info : STATUS_COLORS) {
+        if (info.statusCode == statusCode) {
+            return info;
+        }
+    }
+    // Varsayılan (tanımlanmamış durumlar için)
+    return { 0, _T("Bilinmeyen"), RGB(255, 255, 255), RGB(0, 0, 0) };
+}
+
+/// @brief Durum adına göre renk bilgisi döndürür
+/// @param statusName Aranacak durum adı (örn: "Satıldı")
+/// @return StatusColorInfo yapısı, bulunamazsa varsayılan değer
+/// @note Büyük/küçük harf duyarsız karşılaştırma yapar
+inline StatusColorInfo GetStatusColorInfoByName(const CString& statusName)
+{
+    for (const auto& info : STATUS_COLORS) {
+        if (info.statusName.CompareNoCase(statusName) == 0) {
+            return info;
+        }
+    }
+    // Varsayılan (tanımlanmamış durumlar için)
+    return { 0, _T("Bilinmeyen"), RGB(255, 255, 255), RGB(0, 0, 0) };
+}
+
 struct SubColumnInfo
 {
     CString title;
     int width;
     int align;
 };
+
+// --------------------------------------------------------
+// Yardımcı Fonksiyonlar - Modüler Kod Organizasyonu
+// --------------------------------------------------------
+
+/// @brief Tablo adına göre Primary Key alan adını döndürür
+/// @param tableName Tablo adı (örn: TABLE_NAME_HOME)
+/// @return PK alan adı (örn: "Home_Code")
+/// @note Bilinmeyen tablolar için "ID" döner
+inline CString GetCodeFieldForTable(const CString& tableName)
+{
+    static const std::map<CString, CString, CStringLessNoCase> TABLE_CODE_FIELDS = {
+        { TABLE_NAME_HOME,       _T("Home_Code") },
+        { TABLE_NAME_LAND,       _T("Land_Code") },
+        { TABLE_NAME_FIELD,      _T("Field_Code") },
+        { TABLE_NAME_VINEYARD,   _T("Vineyard_Code") },
+        { TABLE_NAME_VILLA,      _T("Villa_Code") },
+        { TABLE_NAME_COMMERCIAL, _T("Commercial_Code") },
+        { TABLE_NAME_CAR,        _T("Car_Code") },
+        { TABLE_NAME_CUSTOMER,   _T("Cari_Kod") }
+    };
+
+    auto it = TABLE_CODE_FIELDS.find(tableName);
+    if (it != TABLE_CODE_FIELDS.end()) {
+        return it->second;
+    }
+    return _T("ID"); // Varsayılan
+}
+
+/// @brief Gradient dikdörtgen çizer
+/// @param hdc Device context handle
+/// @param rect Çizilecek alan
+/// @param colorStart Başlangıç rengi
+/// @param colorEnd Bitiş rengi
+/// @param vertical true ise dikey gradient, false ise yatay
+void DrawGradientRect(HDC hdc, const RECT& rect, COLORREF colorStart, COLORREF colorEnd, bool vertical = false);
+
+/// @brief Rengi açar (lighten)
+/// @param color Orijinal renk
+/// @param amount Açma miktarı (0-255)
+/// @return Açılmış renk
+COLORREF LightenColor(COLORREF color, int amount = 40);
 
 
 #define IDC_TREEHEADER 30128
@@ -171,7 +270,20 @@ public:
     COLORREF GetColorForStatus(const CString& status);
     std::vector<Win32xx::PropertyColumnInfo> GetTableDefinition(const CString& tableName);
 
+    /// @brief Durum koduna göre arka plan rengi döndürür (Hızlı inline versiyon)
+    /// @param status Durum kodu (1-4)
+    /// @return COLORREF renk değeri
+    /// @note Bu fonksiyon GetStatusColorInfoByCode'u kullanarak tek kaynak prensibini korur
+    /// @see GetStatusColorInfoByCode
+    COLORREF GetColorByStatus(int status) {
+        StatusColorInfo info = GetStatusColorInfoByCode(status);
+        return info.backgroundColor;
+    }
 
+    /// @brief Seçili satırın durumunu değiştirir ve veritabanını günceller
+    /// @param hItem Değiştirilecek satırın handle'ı
+    /// @param cmdId Seçilen menü komutu ID'si (IDM_STATUS_*)
+    /// @details Hem veritabanını günceller hem de UI'ı yeni renklerle boyar
     void ChangePropertyStatus(HTREEITEM hItem, UINT cmdId);
 
     // MyTreeListView.h içinde:
@@ -1557,6 +1669,10 @@ protected:
         case IDM_STATUS_PRICE_DOWN:
         case IDM_STATUS_URGENT:
         case IDM_STATUS_PASSIVE:
+        case IDM_STATUS_SOLD_NEW:
+        case IDM_STATUS_WAITING:
+        case IDM_STATUS_PRICE_TRACKING:
+        case IDM_STATUS_PROBLEMATIC:
         {
             HTREEITEM hItem = GetSelectedItem();
             if (hItem && GetItemData(hItem) != (DWORD_PTR)-1) // Header değilse

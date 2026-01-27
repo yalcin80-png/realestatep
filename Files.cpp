@@ -3486,31 +3486,28 @@ void CListCustomerView::DrawCardItemProfessional(LPNMLVCUSTOMDRAW pLVCD, CDC& dc
     ad.MakeUpper();
     g.DrawString(ad, -1, &nameFont, PointF(contentLeft, textTop), &textBrushWhite);
 
-    // -- Cari Kod (Ref) --
+    // -- Database Customer ID (Cari Kod - Prominent) --
     textTop += (REAL)DpiScaleInt(18);
-    Gdiplus::Font refFont(L"Consolas", (REAL)DpiScaleInt(8), FontStyleRegular);
+    Gdiplus::Font refFont(L"Consolas", (REAL)DpiScaleInt(9), FontStyleBold);
     SolidBrush textBrushDim(Color(255, 150, 150, 150));
-    g.DrawString(L"#" + cariKod, -1, &refFont, PointF(contentLeft, textTop), &textBrushDim);
+    SolidBrush textBrushAccent(Color(255, 100, 180, 255)); // Accent color for DB ID
+    g.DrawString(L"ID: ", -1, &refFont, PointF(contentLeft, textTop), &textBrushDim);
+    g.DrawString(cariKod, -1, &refFont, PointF(contentLeft + DpiScaleInt(20), textTop), &textBrushAccent);
 
-    // -- İletişim Bilgileri (İkonlu) --
+    // -- TC Kimlik Number (with masking) --
+    textTop += (REAL)DpiScaleInt(16);
+    Gdiplus::Font idFont(L"Segoe UI", (REAL)DpiScaleInt(8), FontStyleRegular);
+    bool isUnmasked = (m_unmaskedIdItems.find(item) != m_unmaskedIdItems.end());
+    CString displayId = isUnmasked ? tckimlik : MaskIdNumber(tckimlik);
+    g.DrawString(L"TC: ", -1, &idFont, PointF(contentLeft, textTop), &textBrushDim);
+    g.DrawString(displayId, -1, &idFont, PointF(contentLeft + DpiScaleInt(22), textTop), &textBrushWhite);
+
+    // -- Telefon --
+    textTop += (REAL)DpiScaleInt(16);
     Gdiplus::Font infoFont(L"Segoe UI", (REAL)DpiScaleInt(9), FontStyleRegular);
     REAL iconOffset = (REAL)DpiScaleInt(20);
-
-    // Telefon
-    textTop += (REAL)DpiScaleInt(22);
     g.DrawString(L"📞", -1, &infoFont, PointF(contentLeft, textTop), &textBrushDim);
     g.DrawString(tel, -1, &infoFont, PointF(contentLeft + iconOffset, textTop), &textBrushWhite);
-
-    // Email
-    textTop += (REAL)DpiScaleInt(18);
-    // E-mail çok uzunsa sığdır
-    RectF mailRect(contentLeft + iconOffset, textTop, rect.GetRight() - contentLeft - iconOffset - PADDING, (REAL)DpiScaleInt(20));
-    StringFormat leftFmt;
-    leftFmt.SetTrimming(StringTrimmingEllipsisCharacter);
-    leftFmt.SetFormatFlags(StringFormatFlagsNoWrap);
-
-    g.DrawString(L"📧", -1, &infoFont, PointF(contentLeft, textTop), &textBrushDim);
-    g.DrawString(mail, -1, &infoFont, mailRect, &leftFmt, &textBrushDim); // Email biraz sönük olsun
 
     // =========================================================================
     // 6. STATUS ROZETİ (Badge - Sağ Alt)
@@ -3550,35 +3547,71 @@ void CListCustomerView::DrawCardItemProfessional(LPNMLVCUSTOMDRAW pLVCD, CDC& dc
     g.DrawString(statusText, -1, &badgeFont, badgeRect, &centerFmt, &badgeTextBrush);
 
     // =========================================================================
-    // 7. HIZLI EKLE BUTONU (+) (Sağ Üst - Ghost Button)
+    // 7. ACTION BUTTONS (Top Right - Three Buttons)
     // =========================================================================
+    // We now have THREE buttons:
+    // 1. Add button (+) - leftmost
+    // 2. Edit button (✎) - middle  
+    // 3. ID Toggle button (👁) - rightmost
+    
     REAL btnSize = (REAL)DpiScaleInt(22);
-    RectF btnRect(
-        rect.GetRight() - btnSize - (REAL)PADDING,
-        rect.Y + (REAL)PADDING,
-        btnSize, btnSize
-    );
-
-    // Sadece Hover durumunda veya Seçiliyken belirginleşsin
+    REAL btnSpacing = (REAL)DpiScaleInt(4);
     int alpha = (hovered || selected) ? 255 : 80;
 
-    // Buton Dairesi (Çizgi)
-    Pen plusCirclePen(Color(alpha, 255, 255, 255), 1.0f);
-    g.DrawEllipse(&plusCirclePen, btnRect);
-
-    // Buton İçi (Hover ise dolu)
+    // Calculate button positions (right to left)
+    REAL startX = rect.GetRight() - btnSize - (REAL)PADDING;
+    
+    // ---- Button 3: ID Toggle (👁) ----
+    RectF btnIdToggle(startX, rect.Y + (REAL)PADDING, btnSize, btnSize);
+    Pen eyeCirclePen(Color(alpha, 255, 255, 255), 1.0f);
+    g.DrawEllipse(&eyeCirclePen, btnIdToggle);
     if (hovered) {
         SolidBrush btnFill(Color(40, 255, 255, 255));
-        g.FillEllipse(&btnFill, btnRect);
+        g.FillEllipse(&btnFill, btnIdToggle);
     }
-
-    // Artı İşareti
+    // Eye icon (simplified)
+    REAL eyeMidX = btnIdToggle.X + btnSize / 2.0f;
+    REAL eyeMidY = btnIdToggle.Y + btnSize / 2.0f;
+    Pen eyePen(Color(alpha, 255, 255, 255), 1.5f);
+    RectF eyeOuter(eyeMidX - 5, eyeMidY - 3, 10, 6);
+    g.DrawEllipse(&eyePen, eyeOuter);
+    SolidBrush pupilBrush(Color(alpha, 255, 255, 255));
+    RectF pupilRect(eyeMidX - 2, eyeMidY - 2, 4, 4);
+    g.FillEllipse(&pupilBrush, pupilRect);
+    
+    // ---- Button 2: Edit (✎) ----
+    startX -= (btnSize + btnSpacing);
+    RectF btnEdit(startX, rect.Y + (REAL)PADDING, btnSize, btnSize);
+    Pen editCirclePen(Color(alpha, 255, 255, 255), 1.0f);
+    g.DrawEllipse(&editCirclePen, btnEdit);
+    if (hovered) {
+        SolidBrush btnFill(Color(40, 255, 255, 255));
+        g.FillEllipse(&btnFill, btnEdit);
+    }
+    // Pencil icon (simplified)
+    REAL editMidX = btnEdit.X + btnSize / 2.0f;
+    REAL editMidY = btnEdit.Y + btnSize / 2.0f;
+    Pen pencilPen(Color(alpha, 255, 255, 255), 1.5f);
+    g.DrawLine(&pencilPen, editMidX - 3, editMidY + 3, editMidX + 3, editMidY - 3);
+    g.DrawLine(&pencilPen, editMidX + 3, editMidY - 3, editMidX + 4, editMidY - 4);
+    g.DrawLine(&pencilPen, editMidX - 4, editMidY + 4, editMidX - 3, editMidY + 3);
+    
+    // ---- Button 1: Add (+) ----
+    startX -= (btnSize + btnSpacing);
+    RectF btnAdd(startX, rect.Y + (REAL)PADDING, btnSize, btnSize);
+    Pen plusCirclePen(Color(alpha, 255, 255, 255), 1.0f);
+    g.DrawEllipse(&plusCirclePen, btnAdd);
+    if (hovered) {
+        SolidBrush btnFill(Color(40, 255, 255, 255));
+        g.FillEllipse(&btnFill, btnAdd);
+    }
+    // Plus sign
     Pen plusPen(Color(alpha, 255, 255, 255), 1.5f);
-    REAL midX = btnRect.X + btnSize / 2.0f;
-    REAL midY = btnRect.Y + btnSize / 2.0f;
+    REAL plusMidX = btnAdd.X + btnSize / 2.0f;
+    REAL plusMidY = btnAdd.Y + btnSize / 2.0f;
     REAL len = btnSize / 4.0f;
-    g.DrawLine(&plusPen, midX - len, midY, midX + len, midY); // Yatay
-    g.DrawLine(&plusPen, midX, midY - len, midX, midY + len); // Dikey
+    g.DrawLine(&plusPen, plusMidX - len, plusMidY, plusMidX + len, plusMidY); // Horizontal
+    g.DrawLine(&plusPen, plusMidX, plusMidY - len, plusMidX, plusMidY + len); // Vertical
 }
 void CListCustomerView::ShowQuickAddMenu(POINT pt, const CString& cariKod)
 {
@@ -3625,22 +3658,55 @@ LRESULT CListCustomerView::HandleLButtonUp(LPARAM lparam)
     POINT pt = { GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam) };
     int clickedItem = -1;
 
-    // 1. Tıklanan noktanın buton üzerinde olup olmadığını kontrol et
-    if (IsPointInAddButton(pt, clickedItem))
+    // 1. Check ID Toggle Button (rightmost)
+    if (IsPointInIdToggleButton(pt, clickedItem))
     {
-        // 2. MÜŞTERİ KODUNU AL (KRİTİK ADIM)
-        // Kullanıcı butona bastığında, bu satırı otomatik olarak seçili yapıyoruz 
-        // ki OnAddHome gibi fonksiyonlar doğru ID'yi alabilsin.
+        // Toggle the masked/unmasked state for this item
+        if (m_unmaskedIdItems.find(clickedItem) != m_unmaskedIdItems.end())
+        {
+            // Currently unmasked, mask it
+            m_unmaskedIdItems.erase(clickedItem);
+        }
+        else
+        {
+            // Currently masked, unmask it
+            m_unmaskedIdItems.insert(clickedItem);
+        }
+        
+        // Repaint the card
+        CRect rcItem;
+        ListView_GetItemRect(GetHwnd(), clickedItem, &rcItem, LVIR_BOUNDS);
+        rcItem.bottom = rcItem.top + DpiScaleInt(130);
+        InvalidateRect(rcItem, FALSE);
+        return 0;
+    }
+
+    // 2. Check Edit Button (middle)
+    if (IsPointInEditButton(pt, clickedItem))
+    {
+        // Select the item and open edit dialog
         DeleteAllSelections();
         ListView_SetItemState(GetHwnd(), clickedItem, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
 
-        CString cariKod = GetItemText(clickedItem, 0); // 0. sütun: Cari Kod
+        CString cariKod = GetItemText(clickedItem, 0);
+        OnEditCustomer(cariKod);
+        return 0;
+    }
 
-        // 3. EKRAN KOORDİNATINA ÇEVİR
+    // 3. Check Add Button (leftmost)
+    if (IsPointInAddButton(pt, clickedItem))
+    {
+        // Select the item and show quick add menu
+        DeleteAllSelections();
+        ListView_SetItemState(GetHwnd(), clickedItem, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+
+        CString cariKod = GetItemText(clickedItem, 0);
+        
+        // Convert to screen coordinates
         CPoint screenPt = pt;
         ::ClientToScreen(GetHwnd(), &screenPt);
 
-        // 4. POPUP MENÜYÜ GÖSTER
+        // Show popup menu
         ShowQuickAddMenu(screenPt, cariKod);
         return 0;
     }
@@ -3862,6 +3928,145 @@ bool CListCustomerView::IsPointInAddButton(POINT pt, int& outItem)
     // 3. Eğer bir item bulunduysa, tıklanan nokta o item'ın buton alanında mı bak
     if (nItem != -1) {
         CRect rcBtn = GetAddButtonRect(nItem);
+        if (rcBtn.PtInRect(pt)) {
+            outItem = nItem;
+            return true;
+        }
+    }
+    return false;
+}
+
+// Helper: Mask ID Number (show only first 3 and last 2 digits)
+CString CListCustomerView::MaskIdNumber(const CString& idNumber)
+{
+    if (idNumber.IsEmpty())
+        return _T("***********");
+    
+    int len = idNumber.GetLength();
+    if (len <= 5)
+        return _T("***********");
+    
+    // Show first 3 and last 2, mask the rest
+    CString masked;
+    masked = idNumber.Left(3) + _T("******") + idNumber.Right(2);
+    return masked;
+}
+
+// Helper: Check if ID is unmasked for this item
+bool CListCustomerView::IsIdNumberUnmasked(int nItem) const
+{
+    return m_unmaskedIdItems.find(nItem) != m_unmaskedIdItems.end();
+}
+
+// Helper: Get Edit Button Rectangle
+CRect CListCustomerView::GetEditButtonRect(int nItem)
+{
+    CRect rcItem;
+    ListView_GetItemRect(GetHwnd(), nItem, &rcItem, LVIR_BOUNDS);
+
+    const int CARD_TOTAL_WIDTH = DpiScaleInt(270);
+    const int btnSize = DpiScaleInt(22);
+    const int btnSpacing = DpiScaleInt(4);
+    const int btnPad = DpiScaleInt(12);
+    const int CARD_PADDING = DpiScaleInt(6);
+
+    int cardRight = rcItem.left + CARD_PADDING + CARD_TOTAL_WIDTH - (2 * CARD_PADDING);
+    
+    // Edit button is the middle button (second from right)
+    CRect rcBtn(
+        cardRight - (2 * btnSize) - btnSpacing - btnPad,
+        rcItem.top + CARD_PADDING + btnPad,
+        cardRight - btnSize - btnSpacing - btnPad,
+        rcItem.top + CARD_PADDING + btnSize + btnPad
+    );
+
+    return rcBtn;
+}
+
+// Helper: Get ID Toggle Button Rectangle
+CRect CListCustomerView::GetIdToggleButtonRect(int nItem)
+{
+    CRect rcItem;
+    ListView_GetItemRect(GetHwnd(), nItem, &rcItem, LVIR_BOUNDS);
+
+    const int CARD_TOTAL_WIDTH = DpiScaleInt(270);
+    const int btnSize = DpiScaleInt(22);
+    const int btnPad = DpiScaleInt(12);
+    const int CARD_PADDING = DpiScaleInt(6);
+
+    int cardRight = rcItem.left + CARD_PADDING + CARD_TOTAL_WIDTH - (2 * CARD_PADDING);
+    
+    // ID toggle button is the rightmost button
+    CRect rcBtn(
+        cardRight - btnSize - btnPad,
+        rcItem.top + CARD_PADDING + btnPad,
+        cardRight - btnPad,
+        rcItem.top + CARD_PADDING + btnSize + btnPad
+    );
+
+    return rcBtn;
+}
+
+// Helper: Check if point is in Edit button
+bool CListCustomerView::IsPointInEditButton(POINT pt, int& outItem)
+{
+    LVHITTESTINFO lvhti = { 0 };
+    lvhti.pt = pt;
+    int nItem = ListView_HitTest(GetHwnd(), &lvhti);
+
+    if (nItem == -1 && GetViewMode() == VIEW_MODE_CARD)
+    {
+        CRect rcCheck;
+        int count = GetItemCount();
+        for (int i = 0; i < count; ++i)
+        {
+            if (ListView_GetItemRect(GetHwnd(), i, &rcCheck, LVIR_BOUNDS))
+            {
+                rcCheck.bottom = rcCheck.top + DpiScaleInt(130);
+                if (rcCheck.PtInRect(pt)) {
+                    nItem = i;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (nItem != -1) {
+        CRect rcBtn = GetEditButtonRect(nItem);
+        if (rcBtn.PtInRect(pt)) {
+            outItem = nItem;
+            return true;
+        }
+    }
+    return false;
+}
+
+// Helper: Check if point is in ID Toggle button
+bool CListCustomerView::IsPointInIdToggleButton(POINT pt, int& outItem)
+{
+    LVHITTESTINFO lvhti = { 0 };
+    lvhti.pt = pt;
+    int nItem = ListView_HitTest(GetHwnd(), &lvhti);
+
+    if (nItem == -1 && GetViewMode() == VIEW_MODE_CARD)
+    {
+        CRect rcCheck;
+        int count = GetItemCount();
+        for (int i = 0; i < count; ++i)
+        {
+            if (ListView_GetItemRect(GetHwnd(), i, &rcCheck, LVIR_BOUNDS))
+            {
+                rcCheck.bottom = rcCheck.top + DpiScaleInt(130);
+                if (rcCheck.PtInRect(pt)) {
+                    nItem = i;
+                    break;
+                }
+            }
+        }
+    }
+
+    if (nItem != -1) {
+        CRect rcBtn = GetIdToggleButtonRect(nItem);
         if (rcBtn.PtInRect(pt)) {
             outItem = nItem;
             return true;
@@ -4278,18 +4483,19 @@ CRect CListCustomerView::GetAddButtonRect(int nItem)
 
     // DrawCardItemProfessional içindeki sabitlerle aynı olmalı
     const int CARD_TOTAL_WIDTH = DpiScaleInt(270);
-    const int btnSize = DpiScaleInt(24);
-    const int btnPad = DpiScaleInt(10);
+    const int btnSize = DpiScaleInt(22);
+    const int btnSpacing = DpiScaleInt(4);
+    const int btnPad = DpiScaleInt(12);
     const int CARD_PADDING = DpiScaleInt(6);
 
     // Kartın sağ kenarını hesapla
     int cardRight = rcItem.left + CARD_PADDING + CARD_TOTAL_WIDTH - (2 * CARD_PADDING);
 
-    // Butonun Rect'ini oluştur (Çizimdeki yer: Sağ Üst)
+    // Add button is now the leftmost of three buttons
     CRect rcBtn(
-        cardRight - btnSize - btnPad,
+        cardRight - (3 * btnSize) - (2 * btnSpacing) - btnPad,
         rcItem.top + CARD_PADDING + btnPad,
-        cardRight - btnPad,
+        cardRight - (2 * btnSize) - (2 * btnSpacing) - btnPad,
         rcItem.top + CARD_PADDING + btnSize + btnPad
     );
 
