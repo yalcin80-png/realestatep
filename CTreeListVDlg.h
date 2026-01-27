@@ -60,16 +60,23 @@ struct ItemColorInfo
 
 // --------------------------------------------------------
 //  Modüler Durum Yönetimi - Kurumsal İhtiyaçlar
+//  
+//  Bu sistem, mülk durumlarını renk kodlarıyla yönetmek için
+//  merkezi ve genişletilebilir bir yapı sağlar.
 // --------------------------------------------------------
+
+/// @brief Durum renk bilgilerini tutan yapı
+/// @details Her durum için kod, isim ve renk bilgilerini içerir
 struct StatusColorInfo
 {
-    int statusCode;
-    CString statusName;
-    COLORREF backgroundColor;
-    COLORREF textColor;
+    int statusCode;              ///< Durum kodu (1: Satıldı, 2: Beklemede, vb.)
+    CString statusName;          ///< Durum adı (kullanıcı dostu)
+    COLORREF backgroundColor;    ///< Satır arka plan rengi
+    COLORREF textColor;         ///< Satır yazı rengi
 };
 
-// Durum-Renk Eşleştirme Tablosu
+/// @brief Durum-Renk Eşleştirme Tablosu
+/// @note Yeni durumlar buraya eklenerek sistem genişletilebilir
 static const StatusColorInfo STATUS_COLORS[] = {
     { 1, _T("Satıldı"),         RGB(255, 0, 0),     RGB(255, 255, 255) }, // Kırmızı arka plan, beyaz yazı
     { 2, _T("Beklemede"),       RGB(0, 255, 0),     RGB(0, 0, 0) },       // Yeşil arka plan, siyah yazı
@@ -77,7 +84,10 @@ static const StatusColorInfo STATUS_COLORS[] = {
     { 4, _T("Durum: Sorunlu"),  RGB(169, 169, 169), RGB(0, 0, 0) }        // Gri arka plan, siyah yazı
 };
 
-// Durum koduna göre renk bilgisi döndüren yardımcı fonksiyon
+/// @brief Durum koduna göre renk bilgisi döndürür
+/// @param statusCode Aranacak durum kodu (1-4)
+/// @return StatusColorInfo yapısı, bulunamazsa varsayılan değer
+/// @example auto info = GetStatusColorInfoByCode(1); // Satıldı durumu için bilgi
 inline StatusColorInfo GetStatusColorInfoByCode(int statusCode)
 {
     for (const auto& info : STATUS_COLORS) {
@@ -89,7 +99,10 @@ inline StatusColorInfo GetStatusColorInfoByCode(int statusCode)
     return { 0, _T("Bilinmeyen"), RGB(255, 255, 255), RGB(0, 0, 0) };
 }
 
-// Durum adına göre renk bilgisi döndüren yardımcı fonksiyon
+/// @brief Durum adına göre renk bilgisi döndürür
+/// @param statusName Aranacak durum adı (örn: "Satıldı")
+/// @return StatusColorInfo yapısı, bulunamazsa varsayılan değer
+/// @note Büyük/küçük harf duyarsız karşılaştırma yapar
 inline StatusColorInfo GetStatusColorInfoByName(const CString& statusName)
 {
     for (const auto& info : STATUS_COLORS) {
@@ -214,7 +227,11 @@ public:
     COLORREF GetColorForStatus(const CString& status);
     std::vector<Win32xx::PropertyColumnInfo> GetTableDefinition(const CString& tableName);
 
-    // Yeni durum bazlı renk yönetimi - Kurumsal İhtiyaçlar için
+    /// @brief Durum koduna göre arka plan rengi döndürür (Hızlı inline versiyon)
+    /// @param status Durum kodu (1-4)
+    /// @return COLORREF renk değeri
+    /// @note Bu fonksiyon basit switch-case kullanır, daha detaylı bilgi için GetStatusColorInfoByCode kullanın
+    /// @see GetStatusColorInfoByCode
     COLORREF GetColorByStatus(int status) {
         switch (status) {
             case 1: return RGB(255, 0, 0);      // Satıldı (Kırmızı)
@@ -225,6 +242,10 @@ public:
         }
     }
 
+    /// @brief Seçili satırın durumunu değiştirir ve veritabanını günceller
+    /// @param hItem Değiştirilecek satırın handle'ı
+    /// @param cmdId Seçilen menü komutu ID'si (IDM_STATUS_*)
+    /// @details Hem veritabanını günceller hem de UI'ı yeni renklerle boyar
     void ChangePropertyStatus(HTREEITEM hItem, UINT cmdId);
 
     // MyTreeListView.h içinde:
