@@ -2,6 +2,7 @@
 #include <vector>
 #include <functional>
 #include <string>
+#include <optional>
 #include "wxx_wincore.h"
 #include "dataIsMe.h" 
 
@@ -123,6 +124,9 @@ public:
     // Ana Fonksiyon
     //bool ImportFromHtmlString(const CString& url, const std::string& htmlContent, LogFn log);
     CString ExtractIdFromUrl(const CString& url);
+
+    // Fetch property data by property ID
+    std::optional<IlanBilgisi> FetchByIlanNumarasi(const CString& ilanNumarasi);
 
 private:
     // JSON Yöntemi (Hızlı)

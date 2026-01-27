@@ -3,6 +3,7 @@
 #include <regex>
 #include <vector>
 #include <unordered_map>
+#include <optional>
 #include "json.hpp"
 
 using json = nlohmann::json;
@@ -1296,4 +1297,24 @@ bool SahibindenImporter::SaveToDatabase(const SahibindenListingPayload& p, LogFn
     h.Deleted = _T("0");
     h.Status = _T("1");
     return db.InsertGlobal(h);
+}
+
+// Fetch property data by property ID
+std::optional<IlanBilgisi> SahibindenImporter::FetchByIlanNumarasi(const CString& ilanNumarasi) {
+    try {
+        // Construct URL from property ID
+        // std::wstring url = L"https://www.sahibinden.com/ilan/" + std::wstring(ilanNumarasi.GetString());
+        
+        // Note: In a real implementation, you would use an HTTP client to download the HTML
+        // For now, this is a placeholder that returns nullopt since we don't have HTTP capabilities
+        // The actual implementation would require:
+        // 1. HTTP client to download HTML from the URL
+        // 2. HTML parser to extract data from specific selectors
+        // 3. Populate IlanBilgisi struct with extracted data
+        
+        // Return nullopt to indicate data fetching is not implemented
+        return std::nullopt;
+    } catch (...) {
+        return std::nullopt;
+    }
 }
