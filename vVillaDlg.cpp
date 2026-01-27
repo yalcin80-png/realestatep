@@ -2,12 +2,12 @@
 #include "vVillaDlg.h"
 #include "resource.h"
 
-// --- Yardýmcýlar ---
+// --- Yardï¿½mcï¿½lar ---
 static void ComboFillYesNo(HWND hCombo) {
     if (!hCombo) return;
     ::SendMessage(hCombo, CB_RESETCONTENT, 0, 0);
     ::SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)_T("Evet"));
-    ::SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)_T("Hayýr"));
+    ::SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)_T("Hayï¿½r"));
     ::SendMessage(hCombo, CB_SETCURSEL, 1, 0);
 }
 
@@ -25,7 +25,7 @@ static void ComboFillSellerType(HWND hCombo) {
     ::SendMessage(hCombo, CB_RESETCONTENT, 0, 0);
     ::SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)_T("Sahibinden"));
     ::SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)_T("Emlak Ofisi"));
-    ::SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)_T("Ýnþaat Firmasý"));
+    ::SendMessage(hCombo, CB_ADDSTRING, 0, (LPARAM)_T("ï¿½nï¿½aat Firmasï¿½"));
     ::SendMessage(hCombo, CB_SETCURSEL, 0, 0);
 }
 
@@ -72,7 +72,7 @@ BOOL CVillaDialog::OnInitDialog()
 {
     CVillaPageBase::OnInitDialog();
 
-    // Font Ayarý
+    // Font Ayarï¿½
     LOGFONT lf{}; SystemParametersInfo(SPI_GETICONTITLELOGFONT, sizeof(lf), &lf, 0);
     _tcscpy_s(lf.lfFaceName, _T("Segoe UI"));
     lf.lfHeight = -MulDiv(9, GetDeviceCaps(::GetDC(nullptr), LOGPIXELSY), 72);
@@ -82,20 +82,20 @@ BOOL CVillaDialog::OnInitDialog()
     m_tab.AttachDlgItem(IDC_TAB_VILLA, *this);
     m_tab.SetFont(m_font, TRUE);
 
-    // Sekmeleri doðrudan ekle (Tab içinde Tab bitti)
+    // Sekmeleri doï¿½rudan ekle (Tab iï¿½inde Tab bitti)
     TCITEM ti0{ TCIF_TEXT, 0, 0, (LPTSTR)_T("Genel") }; m_tab.InsertItem(0, &ti0);
-    TCITEM ti1{ TCIF_TEXT, 0, 0, (LPTSTR)_T("Açýklama / Notlar") }; m_tab.InsertItem(1, &ti1);
-    TCITEM ti2{ TCIF_TEXT, 0, 0, (LPTSTR)_T("Cephe / Ýç") }; m_tab.InsertItem(2, &ti2);
-    TCITEM ti3{ TCIF_TEXT, 0, 0, (LPTSTR)_T("Dýþ / Muhit") }; m_tab.InsertItem(3, &ti3);
+    TCITEM ti1{ TCIF_TEXT, 0, 0, (LPTSTR)_T("Aï¿½ï¿½klama / Notlar") }; m_tab.InsertItem(1, &ti1);
+    TCITEM ti2{ TCIF_TEXT, 0, 0, (LPTSTR)_T("Cephe / ï¿½ï¿½") }; m_tab.InsertItem(2, &ti2);
+    TCITEM ti3{ TCIF_TEXT, 0, 0, (LPTSTR)_T("Dï¿½ï¿½ / Muhit") }; m_tab.InsertItem(3, &ti3);
 
-    // Sayfalarý Oluþtur
+    // Sayfalarï¿½ Oluï¿½tur
     m_pageGenel.Create(m_tab);
     m_pageNotlar.Create(m_tab);
 
     CRect rcPage = m_tab.GetClientRect();
     m_tab.AdjustRect(FALSE, rcPage);
 
-    // Özellik sayfalarýný doðrudan ana taba baðlýyoruz
+    // ï¿½zellik sayfalarï¿½nï¿½ doï¿½rudan ana taba baï¿½lï¿½yoruz
     m_pageOzellik1.Create(m_tab, rcPage, 9101, CHomeFeaturesPage::PageKind::Features1);
     m_pageOzellik2.Create(m_tab, rcPage, 9102, CHomeFeaturesPage::PageKind::Features2);
 
@@ -122,6 +122,7 @@ INT_PTR CVillaDialog::DialogProc(UINT msg, WPARAM wp, LPARAM lp) {
     case WM_NOTIFY: {
         LPNMHDR pnm = (LPNMHDR)lp;
         if (pnm->idFrom == IDC_TAB_VILLA && pnm->code == TCN_SELCHANGE) {
+            RecalcLayout();  // Ensure pages are properly sized before showing
             ShowPage(m_tab.GetCurSel());
             return TRUE;
         }
@@ -169,7 +170,7 @@ void CVillaDialog::LoadFromDB() {
     m_db.Bind_Data_To_UI(&m_pageGenel, d);
     m_db.Bind_Data_To_UI(&m_pageNotlar, d);
 
-    // Checkbox sayfalarý için map hazýrlýðý
+    // Checkbox sayfalarï¿½ iï¿½in map hazï¿½rlï¿½ï¿½ï¿½
     std::map<CString, CString> m;
     m[_T("Facades")] = d.Facades;
     m[_T("FeaturesInterior")] = d.FeaturesInterior;
@@ -192,18 +193,18 @@ void CVillaDialog::OnOK()
     m_db.Bind_UI_To_Data(&m_pageGenel, d);
     m_db.Bind_UI_To_Data(&m_pageNotlar, d);
 
-    // 2. Özellik sayfalarý (Checkboxlar) için ayrý map'ler kullan
+    // 2. ï¿½zellik sayfalarï¿½ (Checkboxlar) iï¿½in ayrï¿½ map'ler kullan
     std::map<CString, CString> map1, map2;
 
-    // Sayfalarýn oluþturulup oluþturulmadýðýný kontrol ederek verileri çek
+    // Sayfalarï¿½n oluï¿½turulup oluï¿½turulmadï¿½ï¿½ï¿½nï¿½ kontrol ederek verileri ï¿½ek
     if (m_pageOzellik1.IsWindow()) m_pageOzellik1.SaveToMap(map1);
     if (m_pageOzellik2.IsWindow()) m_pageOzellik2.SaveToMap(map2);
 
-    // 3. Map1 verilerini aktar (Cephe / Ýç)
+    // 3. Map1 verilerini aktar (Cephe / ï¿½ï¿½)
     if (map1.count(_T("Facades"))) d.Facades = map1[_T("Facades")];
     if (map1.count(_T("FeaturesInterior"))) d.FeaturesInterior = map1[_T("FeaturesInterior")];
 
-    // 4. Map2 verilerini aktar (Dýþ / Muhit / Ulaþým / Manzara / Konut Tipi / Eriþilebilirlik)
+    // 4. Map2 verilerini aktar (Dï¿½ï¿½ / Muhit / Ulaï¿½ï¿½m / Manzara / Konut Tipi / Eriï¿½ilebilirlik)
     if (map2.count(_T("FeaturesExterior"))) d.FeaturesExterior = map2[_T("FeaturesExterior")];
     if (map2.count(_T("FeaturesNeighborhood"))) d.FeaturesNeighborhood = map2[_T("FeaturesNeighborhood")];
     if (map2.count(_T("FeaturesTransport"))) d.FeaturesTransport = map2[_T("FeaturesTransport")];
@@ -216,13 +217,13 @@ void CVillaDialog::OnOK()
     if (d.Villa_Code.IsEmpty())
         d.Villa_Code = m_villaCode.IsEmpty() ? m_db.GenerateNextVillaCode() : m_villaCode;
 
-    // 6. Veritabaný Ýþlemi
+    // 6. Veritabanï¿½ ï¿½ï¿½lemi
     bool ok = (m_mode == DialogMode::IUPDATEUSER) ? m_db.UpdateGlobal(d) : m_db.InsertGlobal(d);
 
     if (ok)
         EndDialog(IDOK);
     else
-        ::MessageBox(GetHwnd(), _T("Kayýt sýrasýnda veritabaný hatasý oluþtu."), _T("Hata"), MB_ICONERROR);
+        ::MessageBox(GetHwnd(), _T("Kayï¿½t sï¿½rasï¿½nda veritabanï¿½ hatasï¿½ oluï¿½tu."), _T("Hata"), MB_ICONERROR);
 }
 void CVillaDialog::InitCombos() {
     HWND h;

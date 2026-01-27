@@ -63,9 +63,28 @@ bool GdiPlusDrawContext::Begin(HDC hdc)
         return false;
     }
 
-    m_graphics->SetSmoothingMode(SmoothingModeAntiAlias);
-    m_graphics->SetTextRenderingHint(TextRenderingHintClearTypeGridFit);
-    m_graphics->SetInterpolationMode(InterpolationModeHighQualityBicubic);
+    // Yazıcı mı ekran mı kontrol et
+    const int tech = ::GetDeviceCaps(hdc, TECHNOLOGY);
+    const bool isPrinter = (tech == DT_RASPRINTER);
+
+    // Yazıcı için en yüksek kalite ayarları
+    if (isPrinter)
+    {
+        m_graphics->SetSmoothingMode(SmoothingModeHighQuality);
+        m_graphics->SetTextRenderingHint(TextRenderingHintAntiAliasGridFit);
+        m_graphics->SetInterpolationMode(InterpolationModeHighQualityBicubic);
+        m_graphics->SetCompositingQuality(CompositingQualityHighQuality);
+        m_graphics->SetPixelOffsetMode(PixelOffsetModeHighQuality);
+    }
+    else
+    {
+        // Ekran için optimize edilmiş ayarlar
+        m_graphics->SetSmoothingMode(SmoothingModeAntiAlias);
+        m_graphics->SetTextRenderingHint(TextRenderingHintClearTypeGridFit);
+        m_graphics->SetInterpolationMode(InterpolationModeHighQualityBicubic);
+        m_graphics->SetCompositingQuality(CompositingQualityHighSpeed);
+    }
+    
     m_graphics->SetPageUnit(UnitPixel);
 
     return true;

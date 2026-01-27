@@ -28,8 +28,11 @@ protected:
 private:
     // Arayüz Yönetimi
     void CreateToolbar();
+    void CreateStatusBar();
     void LayoutChildren();
     void UpdatePreview(); // Ekrana çizim tetikler
+    void UpdatePageInfo(); // Sayfa bilgisini günceller
+    void UpdateZoomInfo(); // Zoom bilgisini günceller
 
     // İşlem Fonksiyonları
     void OnBtnPrevPage();
@@ -37,18 +40,22 @@ private:
     void OnSaveAsPDF();
     void OnSaveAsPNG();
     void OnPrint();
+    void OnPrintAdvanced(); // Gelişmiş yazdırma seçenekleri
 
     // Yardımcılar
     HBITMAP GeneratePreviewBitmap(); // Geçerli sayfayı bellekte çizer
     bool    SaveBitmapToPNG(HBITMAP hBmp, const CString& filePath);
+    CString FormatZoomPercentage() const; // Zoom yüzdesini formatlar
 private:
     CToolBar  m_ToolBar;
+    CStatusBar m_StatusBar;
     CImageList m_ImgList;
 
     // Veriler
     PreviewItem m_data;
     int         m_currentPage;
     int         m_totalPages;
+    double      m_zoomPercentage; // Zoom yüzdesi (100.0 = %100)
 };
 
 #endif // PREVIEW_PANEL_H

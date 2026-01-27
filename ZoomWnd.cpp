@@ -152,7 +152,8 @@ LRESULT CZoomWnd::OnPaint(WPARAM, LPARAM)
     HDC hdcDraw = ::BeginPaint(*this,&ps);
 
     ::SetMapMode(hdcDraw, MM_TEXT);
-    ::SetStretchBltMode(hdcDraw, COLORONCOLOR);
+    ::SetStretchBltMode(hdcDraw, HALFTONE); // Daha iyi kalite için HALFTONE kullan
+    ::SetBrushOrgEx(hdcDraw, 0, 0, NULL);   // HALFTONE için gerekli
 
     if (m_hpal)
     {
@@ -162,6 +163,21 @@ LRESULT CZoomWnd::OnPaint(WPARAM, LPARAM)
 
     if (m_hbitmap)
     {
+        // Profesyonel görünüm için gölge efekti ekle
+        const int shadowOffset = 4;
+        RECT rcShadow = { 
+            m_ptszDest.x + shadowOffset, 
+            m_ptszDest.y + shadowOffset,
+            m_ptszDest.x + m_ptszDest.cx + shadowOffset, 
+            m_ptszDest.y + m_ptszDest.cy + shadowOffset 
+        };
+        
+        // Gölge çiz (hafif siyah)
+        HBRUSH hShadowBrush = ::CreateSolidBrush(RGB(160, 160, 160));
+        ::FillRect(hdcDraw, &rcShadow, hShadowBrush);
+        ::DeleteObject(hShadowBrush);
+
+        // Sayfa içeriğini çiz
         HDC hdcBitmap = ::CreateCompatibleDC(hdcDraw);
         HGDIOBJ old = ::SelectObject(hdcBitmap, m_hbitmap);
 
@@ -176,6 +192,18 @@ LRESULT CZoomWnd::OnPaint(WPARAM, LPARAM)
 
         ::SelectObject(hdcBitmap, old);
         ::DeleteDC(hdcBitmap);
+        
+        // Sayfa etrafına ince çerçeve çiz
+        HPEN hPen = ::CreatePen(PS_SOLID, 1, RGB(100, 100, 100));
+        HGDIOBJ oldPen = ::SelectObject(hdcDraw, hPen);
+        HGDIOBJ oldBrush = ::SelectObject(hdcDraw, ::GetStockObject(NULL_BRUSH));
+        
+        ::Rectangle(hdcDraw, m_ptszDest.x, m_ptszDest.y, 
+                   m_ptszDest.x + m_ptszDest.cx, m_ptszDest.y + m_ptszDest.cy);
+        
+        ::SelectObject(hdcDraw, oldPen);
+        ::SelectObject(hdcDraw, oldBrush);
+        ::DeleteObject(hPen);
     }
     else
     {
@@ -390,6 +418,12 @@ LRESULT CZoomWnd::OnWheelTurn(WPARAM wParam, LPARAM)
 {
     bool bZoomIn = ((short)HIWORD(wParam) > 0);
     bZoomIn ? ZoomIn() : ZoomOut();
+    
+    // Ana pencereyi bilgilendir (zoom değişti)
+    HWND hParent = ::GetParent(*this);
+    if (hParent)
+        ::PostMessage(hParent, WM_USER + 102, 0, 0); // Zoom değişti mesajı
+    
     return TRUE;
 }
 
@@ -418,6 +452,11 @@ void CZoomWnd::ActualSize()
     m_cyCenter = m_cyImage / 2;
     SetScrollBars();
     ::InvalidateRect(*this, nullptr, FALSE);
+    
+    // Ana pencereyi bilgilendir (zoom değişti)
+    HWND hParent = ::GetParent(*this);
+    if (hParent)
+        ::PostMessage(hParent, WM_USER + 102, 0, 0); // Zoom değişti mesajı
 }
 
 void CZoomWnd::BestFit()
@@ -459,6 +498,11 @@ void CZoomWnd::BestFit()
         SetScrollBars();
 
     ::InvalidateRect(*this, nullptr, FALSE);
+    
+    // Ana pencereyi bilgilendir (zoom değişti)
+    HWND hParent = ::GetParent(*this);
+    if (hParent)
+        ::PostMessage(hParent, WM_USER + 102, 0, 0); // Zoom değişti mesajı
 }
 
 void CZoomWnd::AdjustRectPlacement()
@@ -588,6 +632,11 @@ void CZoomWnd::ZoomIn()
     AdjustRectPlacement();
     ::InvalidateRect(*this, nullptr, TRUE);
     ::UpdateWindow(*this);
+    
+    // Ana pencereyi bilgilendir (zoom değişti)
+    HWND hParent = ::GetParent(*this);
+    if (hParent)
+        ::PostMessage(hParent, WM_USER + 102, 0, 0); // Zoom değişti mesajı
 }
 
 void CZoomWnd::ZoomOut()
@@ -606,4 +655,9 @@ void CZoomWnd::ZoomOut()
     AdjustRectPlacement();
     ::InvalidateRect(*this, nullptr, TRUE);
     ::UpdateWindow(*this);
+    
+    // Ana pencereyi bilgilendir (zoom değişti)
+    HWND hParent = ::GetParent(*this);
+    if (hParent)
+        ::PostMessage(hParent, WM_USER + 102, 0, 0); // Zoom değişti mesajı
 }
