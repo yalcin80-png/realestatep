@@ -882,12 +882,22 @@ bool SahibindenImporter::SaveToDatabase(const SahibindenListingPayload& p, LogFn
 
     auto isCar = [&]() -> bool {
         // Check if it's a vehicle/car listing
-        // Common patterns: /vasita/, /otomobil/, /araba/, or if we have brand/model/km data
-        return (urlLower.Find(_T("/vasita/")) != -1) ||
-               (urlLower.Find(_T("/otomobil/")) != -1) ||
-               (urlLower.Find(_T("/araba/")) != -1) ||
-               (!p.CAR_Brand.IsEmpty() && !p.CAR_Model.IsEmpty()) ||
-               (!p.CAR_Km.IsEmpty());
+        // Priority 1: URL pattern (most reliable)
+        if (urlLower.Find(_T("/vasita/")) != -1 ||
+            urlLower.Find(_T("/otomobil/")) != -1 ||
+            urlLower.Find(_T("/araba/")) != -1) {
+            return true;
+        }
+        // Priority 2: Must have at least Brand AND Model together (stronger signal)
+        // KM alone is too weak - could be distance in property descriptions
+        if (!p.CAR_Brand.IsEmpty() && !p.CAR_Model.IsEmpty()) {
+            return true;
+        }
+        // Priority 3: Has multiple car-specific fields (transmission + fuel type)
+        if (!p.CAR_Transmission.IsEmpty() && !p.CAR_FuelType.IsEmpty()) {
+            return true;
+        }
+        return false;
         };
 
 
