@@ -76,7 +76,7 @@ struct SahibindenListingPayload
     CString CAR_Warranty;          // "Garanti" / warranty
     CString CAR_Plate;             // "Plaka" / license plate
     CString CAR_VehicleCondition;  // "Araç Durumu" / vehicle condition
-    CString CAR_Title;             // İlan başlığı
+    CString CAR_Title;             // Listing title
 
 };
 

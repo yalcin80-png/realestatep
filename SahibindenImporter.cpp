@@ -399,13 +399,12 @@ bool SahibindenImporter::ImportFromJsonAndHtmlString(const CString& url,
             );
 
 
-
             if (payload.listingNo.IsEmpty()) payload.listingNo = ExtractIdFromUrl(url);
             jsonSuccess = true;
-            if (log) log(_T("JSON Analizi Başarılı."));
+            if (log) log(_T("JSON Analysis Successful."));
         }
         catch (...) {
-            if (log) log(_T("JSON Ayrıştırılamadı."));
+            if (log) log(_T("JSON Parse Failed."));
         }
     }
 
@@ -713,7 +712,7 @@ bool SahibindenImporter::ParseTrackingJson(const CString& url, const std::wstrin
             dmpData, { L"acik_alan_m2", L"outdoor_area" }
         );
 
-        // ---- CAR/VEHICLE (Araç) teknik alanlar ----
+        // ---- CAR/VEHICLE technical fields ----
         p.CAR_Brand = PickFirstW(customVars, { L"Marka" }, dmpData, { L"marka", L"brand" });
         p.CAR_Series = PickFirstW(customVars, { L"Seri" }, dmpData, { L"seri", L"series" });
         p.CAR_Model = PickFirstW(customVars, { L"Model" }, dmpData, { L"model" });
