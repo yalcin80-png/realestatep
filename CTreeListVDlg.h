@@ -171,6 +171,16 @@ public:
     COLORREF GetColorForStatus(const CString& status);
     std::vector<Win32xx::PropertyColumnInfo> GetTableDefinition(const CString& tableName);
 
+    // Yeni durum bazlı renk yönetimi - Kurumsal İhtiyaçlar için
+    COLORREF GetColorByStatus(int status) {
+        switch (status) {
+            case 1: return RGB(255, 0, 0);      // Satıldı (Kırmızı)
+            case 2: return RGB(0, 255, 0);      // Beklemede (Yeşil)
+            case 3: return RGB(255, 255, 0);    // Fiyat Takipte (Sarı)
+            case 4: return RGB(169, 169, 169);  // Sorunlu (Gri)
+            default: return RGB(255, 255, 255); // Varsayılan (Beyaz)
+        }
+    }
 
     void ChangePropertyStatus(HTREEITEM hItem, UINT cmdId);
 
@@ -1557,6 +1567,10 @@ protected:
         case IDM_STATUS_PRICE_DOWN:
         case IDM_STATUS_URGENT:
         case IDM_STATUS_PASSIVE:
+        case IDM_STATUS_SOLD_NEW:
+        case IDM_STATUS_WAITING:
+        case IDM_STATUS_PRICE_TRACKING:
+        case IDM_STATUS_PROBLEMATIC:
         {
             HTREEITEM hItem = GetSelectedItem();
             if (hItem && GetItemData(hItem) != (DWORD_PTR)-1) // Header değilse

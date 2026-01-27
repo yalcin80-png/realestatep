@@ -929,6 +929,27 @@ void CMyTreeListView::ChangePropertyStatus(HTREEITEM hItem, UINT cmdId)
         rowColor = RGB(240, 240, 240);
         txtColor = RGB(160, 160, 160);
         break;
+    // Yeni Kurumsal Durum Seçenekleri
+    case IDM_STATUS_SOLD_NEW:
+        newStatus = _T("Satıldı");
+        rowColor = RGB(255, 0, 0);     // Kırmızı (Yoğun)
+        txtColor = RGB(255, 255, 255); // Beyaz yazı
+        break;
+    case IDM_STATUS_WAITING:
+        newStatus = _T("Beklemede");
+        rowColor = RGB(0, 255, 0);     // Yeşil (Yoğun)
+        txtColor = RGB(0, 0, 0);       // Siyah yazı
+        break;
+    case IDM_STATUS_PRICE_TRACKING:
+        newStatus = _T("Fiyat Takipte");
+        rowColor = RGB(255, 255, 0);   // Sarı
+        txtColor = RGB(0, 0, 0);       // Siyah yazı
+        break;
+    case IDM_STATUS_PROBLEMATIC:
+        newStatus = _T("Durum: Sorunlu");
+        rowColor = RGB(169, 169, 169); // Gri
+        txtColor = RGB(0, 0, 0);       // Siyah yazı
+        break;
     default: return;
     }
 
