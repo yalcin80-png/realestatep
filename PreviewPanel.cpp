@@ -30,6 +30,8 @@
 #include "HaruDrawContext.h"
 #include "JsonFormRenderer.h"
 #include "RenderConfig.h"
+#include "DataMapper.h"
+#include "PrintPreviewHelper.h"
 
 #include <memory>
 #include <vector>
@@ -90,11 +92,13 @@ static bool TryRenderContractWithJson(    IDrawContext& ctx,    const PreviewIte
     }
 
     // Veriyi JsonFormRenderer'n bekledii forma evir (map<CString,CString>)
-    std::map<CString, CString> data;
-    for (const auto& kv : item.fields)
+    // Use DataMapper for better field mapping
+    std::map<CString, CString> data = DataMapper::MapFields(item.fields);
+    
+    // Optional: Log if data is empty (for debugging)
+    if (data.empty())
     {
-        // Ayn key birden fazla kez gelirse sonuncusu geerli olur
-        data[kv.first] = kv.second;
+        OutputDebugString(L"Warning: No data fields available for JSON rendering");
     }
 
     // stersen burada ekstra normalize de yapabilirsin:
@@ -659,7 +663,7 @@ bool CPreviewPanel::SaveBitmapToPNG(HBITMAP hBmp, const CString& filePath)
 }
 
 // ============================================================================
-// YAZDIRMA (PRINT) - PROFESYONEL GELŞTRME
+// YAZDIRMA (PRINT) - İŞLEME DESTEKLİ VE HATA YÖNETİMİ
 // ============================================================================
 void CPreviewPanel::OnPrint()
 {
@@ -682,26 +686,32 @@ void CPreviewPanel::OnPrint()
     if (!::PrintDlg(&pd))
         return; // Kullanıcı iptal etti
 
-    HDC hPrinterDC = pd.hDC;
+    HDC hPrinterDC = printDlg.GetPrinterDC();
     if (!hPrinterDC)
     {
-        MessageBox(L"Yazıcı cihazı açılamadı.", L"Hata", MB_ICONERROR);
+        MessageBox(L"Yazıcı bağlantısı kurulamadı.", L"Hata", MB_ICONERROR);
+        return;
+    }
+
+    // Validate printer DC
+    if (!PrintPreviewHelper::ValidatePrinterDC(hPrinterDC))
+    {
+        MessageBox(L"Geçersiz yazıcı cihazı.", L"Hata", MB_ICONERROR);
         return;
     }
 
     CDC dcPrinter;
     dcPrinter.Attach(hPrinterDC);
 
-    // Yazdırma işi başlat
-    CString docTitle = m_data.recordCode.IsEmpty() ? L"Emlak Belgesi" : m_data.recordCode;
-    DOCINFO di = { sizeof(DOCINFO) };
-    di.lpszDocName = docTitle;
-    
+    DOCINFO di = { sizeof(DOCINFO), L"Emlak Belgesi" };
     if (dcPrinter.StartDoc(&di) <= 0)
     {
-        MessageBox(L"Yazdırma işi başlatılamadı.", L"Hata", MB_ICONERROR);
+        CString errMsg = PrintPreviewHelper::FormatPrintError(::GetLastError());
+        MessageBox(errMsg, L"Hata", MB_ICONERROR);
         return;
     }
+
+    bool printSuccess = true;
 
     try
     {
@@ -744,20 +754,45 @@ void CPreviewPanel::OnPrint()
             GdiPlusDrawContext ctx;
             if (ctx.Begin(hPrinterDC))
             {
-                // A4 boyutunda mantıksal sayfa (595x842 point = 210x297 mm)
-                ctx.SetLogicalPageSize(2480, 3508); // A4 @ 300 DPI
+                if (dcPrinter.StartPage() <= 0)
+                {
+                    printSuccess = false;
+                    break;
+                }
+
+                // Setup GdiPlusDrawContext for printer with proper page size
+                GdiPlusDrawContext ctx;
                 
-                layout->Render(ctx, i);
-                ctx.End();
-            }
+                // A4 dimensions (matching PreviewItem.h constants)
+                const double A4_WIDTH = 2100.0;  // Logical A4 width
+                const double A4_HEIGHT = 2970.0; // Logical A4 height
+                
+                if (PrintPreviewHelper::SetupPrintContext(ctx, hPrinterDC, A4_WIDTH, A4_HEIGHT))
+                {
+                    try
+                    {
+                        layout->Render(ctx, i);
+                    }
+                    catch (const std::exception& e)
+                    {
+                        // Log error but continue
+                        CString msg;
+                        msg.Format(L"Sayfa %d render hatası: %S", i, e.what());
+                        OutputDebugString(msg);
+                        printSuccess = false;
+                    }
+                    ctx.End();
+                }
+                else
+                {
+                    printSuccess = false;
+                }
 
-            dcPrinter.EndPage();
-
-            // İlerleme güncelle
-            if (m_StatusBar.IsWindow())
-            {
-                statusMsg.Format(L"Yazdırılıyor: Sayfa %d / %d", i, endPage);
-                m_StatusBar.SetPartText(2, statusMsg);
+                if (dcPrinter.EndPage() <= 0)
+                {
+                    printSuccess = false;
+                    break;
+                }
             }
         }
 
@@ -783,12 +818,27 @@ void CPreviewPanel::OnPrint()
         if (m_StatusBar.IsWindow())
             m_StatusBar.SetPartText(2, L"Hata - Yazdırma iptal edildi");
     }
+    catch (const std::exception& e)
+    {
+        CString msg;
+        msg.Format(L"Yazdırma sırasında kritik hata: %S", e.what());
+        MessageBox(msg, L"Hata", MB_ICONERROR);
+        printSuccess = false;
+    }
     catch (...)
     {
-        dcPrinter.AbortDoc();
-        MessageBox(L"Yazdırma sırasında beklenmeyen bir hata oluştu.", L"Hata", MB_ICONERROR);
-        
-        if (m_StatusBar.IsWindow())
-            m_StatusBar.SetPartText(2, L"Hata - Yazdırma iptal edildi");
+        MessageBox(L"Yazdırma sırasında bilinmeyen hata oluştu.", L"Hata", MB_ICONERROR);
+        printSuccess = false;
+    }
+
+    dcPrinter.EndDoc();
+    
+    if (printSuccess)
+    {
+        MessageBox(L"Yazdırma tamamlandı.", L"Bilgi", MB_OK | MB_ICONINFORMATION);
+    }
+    else
+    {
+        MessageBox(L"Yazdırma tamamlanamadı. Bazı sayfalar yazdırılamış olabilir.", L"Uyarı", MB_OK | MB_ICONWARNING);
     }
 }

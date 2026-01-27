@@ -60,11 +60,10 @@ void GdiWaiverLayout::SetData(const std::vector<std::pair<CString, CString>>& fi
 std::wstring GdiWaiverLayout::GetVal(const std::wstring& key)
 {
     auto it = m_data.find(key);
-    if (it != m_data.end()) {
+    if (it != m_data.end() && !it->second.empty()) {
         return it->second;
     }
-    // Veri yoksa boşluk döndür ki çizim bozulmasın
-    return L"................";
+    return L""; // Boş string döndür, placeholder değil
 }
 
 FontDesc GdiWaiverLayout::MakeFont(const std::wstring& family, float size, bool bold, bool italic)
