@@ -58,6 +58,49 @@ struct ItemColorInfo
     COLORREF bkColor;
 };
 
+// --------------------------------------------------------
+//  Modüler Durum Yönetimi - Kurumsal İhtiyaçlar
+// --------------------------------------------------------
+struct StatusColorInfo
+{
+    int statusCode;
+    CString statusName;
+    COLORREF backgroundColor;
+    COLORREF textColor;
+};
+
+// Durum-Renk Eşleştirme Tablosu
+static const StatusColorInfo STATUS_COLORS[] = {
+    { 1, _T("Satıldı"),         RGB(255, 0, 0),     RGB(255, 255, 255) }, // Kırmızı arka plan, beyaz yazı
+    { 2, _T("Beklemede"),       RGB(0, 255, 0),     RGB(0, 0, 0) },       // Yeşil arka plan, siyah yazı
+    { 3, _T("Fiyat Takipte"),   RGB(255, 255, 0),   RGB(0, 0, 0) },       // Sarı arka plan, siyah yazı
+    { 4, _T("Durum: Sorunlu"),  RGB(169, 169, 169), RGB(0, 0, 0) }        // Gri arka plan, siyah yazı
+};
+
+// Durum koduna göre renk bilgisi döndüren yardımcı fonksiyon
+inline StatusColorInfo GetStatusColorInfoByCode(int statusCode)
+{
+    for (const auto& info : STATUS_COLORS) {
+        if (info.statusCode == statusCode) {
+            return info;
+        }
+    }
+    // Varsayılan (tanımlanmamış durumlar için)
+    return { 0, _T("Bilinmeyen"), RGB(255, 255, 255), RGB(0, 0, 0) };
+}
+
+// Durum adına göre renk bilgisi döndüren yardımcı fonksiyon
+inline StatusColorInfo GetStatusColorInfoByName(const CString& statusName)
+{
+    for (const auto& info : STATUS_COLORS) {
+        if (info.statusName.CompareNoCase(statusName) == 0) {
+            return info;
+        }
+    }
+    // Varsayılan (tanımlanmamış durumlar için)
+    return { 0, _T("Bilinmeyen"), RGB(255, 255, 255), RGB(0, 0, 0) };
+}
+
 struct SubColumnInfo
 {
     CString title;

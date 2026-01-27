@@ -816,6 +816,30 @@ COLORREF CMyTreeListView::GetColorForStatus(const CString& status)
     return CLR_NONE; // Varsayılan (Beyaz)
 }
 
+// --------------------------------------------------------
+// Modüler Yardımcı Fonksiyon: Tablo adına göre PK alan adını döndür
+// --------------------------------------------------------
+CString GetCodeFieldForTable(const CString& tableName)
+{
+    static const std::map<CString, CString, CStringLessNoCase> TABLE_CODE_FIELDS = {
+        { TABLE_NAME_HOME,       _T("Home_Code") },
+        { TABLE_NAME_LAND,       _T("Land_Code") },
+        { TABLE_NAME_FIELD,      _T("Field_Code") },
+        { TABLE_NAME_VINEYARD,   _T("Vineyard_Code") },
+        { TABLE_NAME_VILLA,      _T("Villa_Code") },
+        { TABLE_NAME_COMMERCIAL, _T("Commercial_Code") },
+        { TABLE_NAME_CAR,        _T("Car_Code") },
+        { TABLE_NAME_CUSTOMER,   _T("Cari_Kod") }
+    };
+
+    auto it = TABLE_CODE_FIELDS.find(tableName);
+    if (it != TABLE_CODE_FIELDS.end()) {
+        return it->second;
+    }
+    return _T("ID"); // Varsayılan
+}
+
+
 //void CMyTreeListView::ChangePropertyStatus(HTREEITEM hItem, UINT cmdId)
 //{
 //    // 1. Bilgileri Al
@@ -903,7 +927,7 @@ void CMyTreeListView::ChangePropertyStatus(HTREEITEM hItem, UINT cmdId)
     // ✅ DÜZELTME BURADA: Artık tüm tablolarda alan adı "Status"
     CString statusField = _T("Status");
 
-    // 2. Yeni Durumu Belirle
+    // 2. Yeni Durumu Belirle (Modüler Yaklaşım ile Refactor Edildi)
     CString newStatus;
     COLORREF rowColor = GetTheme().clrWnd;
     COLORREF txtColor = GetTheme().clrText;
@@ -929,51 +953,50 @@ void CMyTreeListView::ChangePropertyStatus(HTREEITEM hItem, UINT cmdId)
         rowColor = RGB(240, 240, 240);
         txtColor = RGB(160, 160, 160);
         break;
-    // Yeni Kurumsal Durum Seçenekleri
+    // Yeni Kurumsal Durum Seçenekleri - Modüler Renk Yönetimi ile
     case IDM_STATUS_SOLD_NEW:
-        newStatus = _T("Satıldı");
-        rowColor = RGB(255, 0, 0);     // Kırmızı (Yoğun)
-        txtColor = RGB(255, 255, 255); // Beyaz yazı
+    {
+        StatusColorInfo info = GetStatusColorInfoByCode(1);
+        newStatus = info.statusName;
+        rowColor = info.backgroundColor;
+        txtColor = info.textColor;
         break;
+    }
     case IDM_STATUS_WAITING:
-        newStatus = _T("Beklemede");
-        rowColor = RGB(0, 255, 0);     // Yeşil (Yoğun)
-        txtColor = RGB(0, 0, 0);       // Siyah yazı
+    {
+        StatusColorInfo info = GetStatusColorInfoByCode(2);
+        newStatus = info.statusName;
+        rowColor = info.backgroundColor;
+        txtColor = info.textColor;
         break;
+    }
     case IDM_STATUS_PRICE_TRACKING:
-        newStatus = _T("Fiyat Takipte");
-        rowColor = RGB(255, 255, 0);   // Sarı
-        txtColor = RGB(0, 0, 0);       // Siyah yazı
+    {
+        StatusColorInfo info = GetStatusColorInfoByCode(3);
+        newStatus = info.statusName;
+        rowColor = info.backgroundColor;
+        txtColor = info.textColor;
         break;
+    }
     case IDM_STATUS_PROBLEMATIC:
-        newStatus = _T("Durum: Sorunlu");
-        rowColor = RGB(169, 169, 169); // Gri
-        txtColor = RGB(0, 0, 0);       // Siyah yazı
+    {
+        StatusColorInfo info = GetStatusColorInfoByCode(4);
+        newStatus = info.statusName;
+        rowColor = info.backgroundColor;
+        txtColor = info.textColor;
         break;
+    }
     default: return;
     }
 
-    // 3. Veritabanını Güncelle
+    // 3. Veritabanını Güncelle - Modüler helper kullanılarak
     DatabaseManager& db = DatabaseManager::GetInstance();
-
-    // Kodu bul (Daha önce yazdığımız kısa if bloğu)
-    CString codeField;
-    if (table.CompareNoCase(TABLE_NAME_HOME) == 0)       codeField = _T("Home_Code");
-    else if (table.CompareNoCase(TABLE_NAME_LAND) == 0)  codeField = _T("Land_Code");
-    else if (table.CompareNoCase(TABLE_NAME_FIELD) == 0) codeField = _T("Field_Code");
-    else if (table.CompareNoCase(TABLE_NAME_VINEYARD) == 0) codeField = _T("Vineyard_Code");
-    else if (table.CompareNoCase(TABLE_NAME_VILLA) == 0)    codeField = _T("Villa_Code");
-    else if (table.CompareNoCase(TABLE_NAME_COMMERCIAL) == 0) codeField = _T("Commercial_Code");
-    else codeField = _T("ID"); // Güvenlik
+    CString codeField = GetCodeFieldForTable(table);
 
     if (db.UpdateFieldGlobal(table, codeField, code, statusField, newStatus))
     {
         // 4. Görünümü Güncelle
         SetRowColor(hItem, txtColor, rowColor);
-
-        // Eğer "Status" kolonunu da metin olarak güncellemek istersen:
-        // (Hangi kolonda olduğunu bulup set etmen gerekir, ama renk yeterliyse gerek yok)
-
         Invalidate();
     }
     else
