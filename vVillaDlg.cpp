@@ -1,6 +1,28 @@
 #include "stdafx.h"
 #include "vVillaDlg.h"
 #include "resource.h"
+#include "json.hpp"
+
+using json = nlohmann::json;
+
+// Helper function to convert wstring to UTF-8 string
+static std::string WStringToUtf8(const std::wstring& wstr) {
+    if (wstr.empty()) return {};
+    int len = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.size(), nullptr, 0, nullptr, nullptr);
+    std::string utf8(len, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.size(), &utf8[0], len, nullptr, nullptr);
+    return utf8;
+}
+
+// Helper function for JSON parsing
+static std::wstring Utf8ToWide(const std::string& s) {
+    if (s.empty()) return L"";
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), NULL, 0);
+    if (wlen <= 0) return L"";
+    std::wstring w(wlen, 0);
+    MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), &w[0], wlen);
+    return w;
+}
 
 // --- Yard�mc�lar ---
 static void ComboFillYesNo(HWND hCombo) {
@@ -284,17 +306,38 @@ void CVillaDialog::LoadRoomsFromJson(const CString& jsonStr) {
     
     try {
         // UTF-8'e dönüştür
-        std::string utf8;
-        int len = WideCharToMultiByte(CP_UTF8, 0, jsonStr, -1, nullptr, 0, nullptr, nullptr);
-        if (len > 0) {
-            utf8.resize(len);
-            WideCharToMultiByte(CP_UTF8, 0, jsonStr, -1, &utf8[0], len, nullptr, nullptr);
+        std::wstring wstr(jsonStr);
+        std::string utf8 = WStringToUtf8(wstr);
+        
+        // JSON parse
+        json j = json::parse(utf8);
+        
+        if (j.is_array()) {
+            for (const auto& item : j) {
+                if (!item.is_object()) continue;
+                
+                RoomInfo room;
+                
+                if (item.contains("name") && item["name"].is_string()) {
+                    std::string nameUtf8 = item["name"].get<std::string>();
+                    room.name = CString(Utf8ToWide(nameUtf8).c_str());
+                }
+                
+                if (item.contains("area") && item["area"].is_number()) {
+                    room.area = item["area"].get<double>();
+                }
+                
+                if (item.contains("hasShower") && item["hasShower"].is_boolean()) {
+                    room.hasShower = item["hasShower"].get<bool>();
+                }
+                
+                if (item.contains("hasSink") && item["hasSink"].is_boolean()) {
+                    room.hasSink = item["hasSink"].get<bool>();
+                }
+                
+                m_rooms.push_back(room);
+            }
         }
-        
-        // JSON parse (nlohmann::json kullanılabilir)
-        // Basit implementasyon için şimdilik boş bırakıyoruz
-        // Gerçek implementasyon vHomeDlg.cpp'deki gibi olmalı
-        
     }
     catch (...) {
         // JSON parse hatası - sessizce geç
