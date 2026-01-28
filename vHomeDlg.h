@@ -7,7 +7,6 @@
 
 #include <commctrl.h>
 #include "HomeFeaturesPage.h"
-#include "SimpleBrowser.h"
 
 class CHomeDialog : public CDialog
 {
@@ -65,21 +64,4 @@ private:
     void ShiftGeneralControlsForTabHeader();
     void LayoutTabAndPages();
     void SwitchTab(int index);
-    
-    // Browser for fetching single property data
-    CSimpleBrowser m_browser;
-    bool m_browserInitialized = false;
-    CString m_pendingIlanNumarasi;
-    
-    void InitBrowserIfNeeded();
-    void FetchPropertyData(const CString& ilanNumarasi);
-    
-    // Dinamik Oda Yönetimi
-    std::vector<RoomInfo> m_rooms;
-    void InitRoomControls();
-    void LoadRoomsFromJson(const CString& jsonStr);
-    CString SaveRoomsToJson();
-    void RefreshRoomListView();
-    void OnAddRoom();
-    void OnRemoveRoom();
 };
