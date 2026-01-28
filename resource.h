@@ -865,6 +865,24 @@
 #define IDC_LV_VILLA_HOUSINGTYPE        42007
 #define IDC_LV_VILLA_ACCESSIBILITY      42008
 
+// Dinamik Oda Yönetimi - Home Dialog
+#define IDC_LISTVIEW_ROOMS_HOME         43001
+#define IDC_BTN_ADD_ROOM_HOME           43002
+#define IDC_BTN_REMOVE_ROOM_HOME        43003
+#define IDC_EDIT_ROOM_NAME_HOME         43004
+#define IDC_EDIT_ROOM_AREA_HOME         43005
+#define IDC_CHECK_ROOM_SHOWER_HOME      43006
+#define IDC_CHECK_ROOM_SINK_HOME        43007
+
+// Dinamik Oda Yönetimi - Villa Dialog
+#define IDC_LISTVIEW_ROOMS_VILLA        43101
+#define IDC_BTN_ADD_ROOM_VILLA          43102
+#define IDC_BTN_REMOVE_ROOM_VILLA       43103
+#define IDC_EDIT_ROOM_NAME_VILLA        43104
+#define IDC_EDIT_ROOM_AREA_VILLA        43105
+#define IDC_CHECK_ROOM_SHOWER_VILLA     43106
+#define IDC_CHECK_ROOM_SINK_VILLA       43107
+
 #define IDC_STATIC                      -1
 
 // Next default values for new objects

@@ -670,6 +670,9 @@ const std::vector<PropertyMap<Home_cstr>>& GetProperties<Home_cstr>() {
         { &Home_cstr::FeaturesAccessibility,_T("FeaturesAccessibility"),0, _T("Engelli Uygun"),      FT_MEMO, 0, false,
             false, { _T("Engelli"), _T("Engelli ve Yaşlıya Uygun") } },
 
+        // --- Dinamik Oda Yönetimi ---
+        { &Home_cstr::RoomDetails,          _T("RoomDetails"),          0, _T("Oda Detayları"),      FT_MEMO, 0, false },
+
         // --- Sistem Alanları ---
         { &Home_cstr::sync_id,          _T("sync_id"),      0,                      _T("Sync ID"),     FT_TEXT,   0,     false },
         { &Home_cstr::Updated_At,        _T("Updated_At"),    IDC_EDIT_UPDATED_AT,    _T("Güncelleme"),  FT_TEXT,   120,   false },
@@ -880,6 +883,10 @@ template<> const std::vector<PropertyMap<Villa_cstr>>& GetProperties<Villa_cstr>
         { &Villa_cstr::sync_id,       _T("sync_id"),       0, _T("Sync ID"),     FT_TEXT,  0,   false },
         { &Villa_cstr::Updated_At,    _T("Updated_At"),    0, _T("Güncelleme"),  FT_TEXT,  0,   false },
         { &Villa_cstr::Deleted,       _T("Deleted"),       0, _T("Silindi"),     FT_BOOL,  0,   false },
+
+        // --- Dinamik Oda Yönetimi ---
+        { &Villa_cstr::RoomDetails,   _T("RoomDetails"),   0, _T("Oda Detayları"), FT_MEMO, 0, false },
+
         { &Villa_cstr::Attributes,    _T("Attributes"),    0, _T("Özellikler"),  FT_MEMO,  0,   false },
 
         // Bu alanlar dialogda yok (istersen sonra eklenir)
