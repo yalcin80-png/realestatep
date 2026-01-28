@@ -105,6 +105,11 @@ BOOL CHomeDialog::OnInitDialog() {
                 // Seviye-2: �zellik tablar�n� DB verisiyle doldur
                 m_featuresPage1.LoadFromMap(dataMap);
                 m_featuresPage2.LoadFromMap(dataMap);
+                
+                // Oda detaylarını yükle
+                if (dataMap.find(_T("RoomDetails")) != dataMap.end()) {
+                    LoadRoomsFromJson(dataMap[_T("RoomDetails")]);
+                }
             }
             else {
                 MessageBox(_T("Kay�t bulunamad�!"), _T("Hata"), MB_ICONERROR);
@@ -112,6 +117,7 @@ BOOL CHomeDialog::OnInitDialog() {
         }
     }
     LayoutTabAndPages();
+    InitRoomControls();
     FixTabFonts();
     // Yeni kay�tta default olarak bo� �zellikler
     if (m_dialogMode == INEWUSER)
@@ -165,7 +171,10 @@ void CHomeDialog::OnOK() {
 
     uiData[_T("Updated_At")] = m_dbManager.GetCurrentIsoUtc();
 
-    // 5. Struct'a d�n��t�r ve Kaydet
+    // 5. Oda detaylarını JSON olarak ekle
+    uiData[_T("RoomDetails")] = SaveRoomsToJson();
+
+    // 6. Struct'a dönüştür ve Kaydet
     Home_cstr h;
     for (const auto& [key, val] : uiData) {
         DatabaseManager::SetFieldByStringName(h, key, val);
@@ -787,6 +796,17 @@ INT_PTR CHomeDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
         return TRUE;
     }
 
+    // Oda Yönetimi buton komutları
+    if (uMsg == WM_COMMAND && LOWORD(wParam) == IDC_BTN_ADD_ROOM_HOME) {
+        OnAddRoom();
+        return TRUE;
+    }
+
+    if (uMsg == WM_COMMAND && LOWORD(wParam) == IDC_BTN_REMOVE_ROOM_HOME) {
+        OnRemoveRoom();
+        return TRUE;
+    }
+
     if (uMsg == WM_NOTIFY)
     {
         NMHDR* hdr = (NMHDR*)lParam;
@@ -1100,11 +1120,161 @@ void CHomeDialog::FetchPropertyData(const CString& ilanNumarasi) {
     ::SetTimer(*this, kPropertyFetchTimerId, kPropertyFetchDelayMs, nullptr);
 }
 
+// ============================================================================
+// DİNAMİK ODA YÖNETİMİ
+// ============================================================================
 
+void CHomeDialog::InitRoomControls() {
+    // Oda listesi için ListView yaratma burada yapılabilir
+    // veya Resource.rc'de tanımlanmışsa yalnızca başlangıç değerlerini ayarla
+    HWND hListView = ::GetDlgItem(*this, IDC_LISTVIEW_ROOMS_HOME);
+    if (hListView) {
+        // ListView column başlıkları ekle
+        LVCOLUMN lvc{};
+        lvc.mask = LVCF_TEXT | LVCF_WIDTH;
+        
+        lvc.pszText = (LPTSTR)_T("Oda Adı");
+        lvc.cx = 120;
+        ListView_InsertColumn(hListView, 0, &lvc);
+        
+        lvc.pszText = (LPTSTR)_T("Alan (m²)");
+        lvc.cx = 80;
+        ListView_InsertColumn(hListView, 1, &lvc);
+        
+        lvc.pszText = (LPTSTR)_T("Duş");
+        lvc.cx = 50;
+        ListView_InsertColumn(hListView, 2, &lvc);
+        
+        lvc.pszText = (LPTSTR)_T("Lavabo");
+        lvc.cx = 60;
+        ListView_InsertColumn(hListView, 3, &lvc);
+    }
+}
 
+void CHomeDialog::LoadRoomsFromJson(const CString& jsonStr) {
+    m_rooms.clear();
+    
+    if (jsonStr.IsEmpty() || jsonStr == _T("[]")) {
+        return;
+    }
+    
+    try {
+        // UTF-8'e dönüştür
+        std::wstring wstr(jsonStr);
+        std::string utf8 = WStringToUtf8(wstr);
+        
+        // JSON parse
+        json j = json::parse(utf8);
+        
+        if (j.is_array()) {
+            for (const auto& item : j) {
+                if (!item.is_object()) continue;
+                
+                RoomInfo room;
+                
+                if (item.contains("name") && item["name"].is_string()) {
+                    std::string nameUtf8 = item["name"].get<std::string>();
+                    room.name = CString(Utf8ToWide(nameUtf8).c_str());
+                }
+                
+                if (item.contains("area") && item["area"].is_number()) {
+                    room.area = item["area"].get<double>();
+                }
+                
+                if (item.contains("hasShower") && item["hasShower"].is_boolean()) {
+                    room.hasShower = item["hasShower"].get<bool>();
+                }
+                
+                if (item.contains("hasSink") && item["hasSink"].is_boolean()) {
+                    room.hasSink = item["hasSink"].get<bool>();
+                }
+                
+                m_rooms.push_back(room);
+            }
+        }
+    }
+    catch (...) {
+        // JSON parse hatası - sessizce geç
+    }
+    
+    RefreshRoomListView();
+}
 
+CString CHomeDialog::SaveRoomsToJson() {
+    return RoomsToJson(m_rooms);
+}
 
+void CHomeDialog::RefreshRoomListView() {
+    HWND hListView = ::GetDlgItem(*this, IDC_LISTVIEW_ROOMS_HOME);
+    if (!hListView) return;
+    
+    ListView_DeleteAllItems(hListView);
+    
+    for (size_t i = 0; i < m_rooms.size(); ++i) {
+        const RoomInfo& room = m_rooms[i];
+        
+        LVITEM lvi{};
+        lvi.mask = LVIF_TEXT;
+        lvi.iItem = (int)i;
+        lvi.iSubItem = 0;
+        lvi.pszText = (LPTSTR)(LPCTSTR)room.name;
+        ListView_InsertItem(hListView, &lvi);
+        
+        // Alan
+        CString areaStr;
+        areaStr.Format(_T("%.2f"), room.area);
+        ListView_SetItemText(hListView, (int)i, 1, (LPTSTR)(LPCTSTR)areaStr);
+        
+        // Duş
+        ListView_SetItemText(hListView, (int)i, 2, room.hasShower ? _T("✓") : _T(""));
+        
+        // Lavabo
+        ListView_SetItemText(hListView, (int)i, 3, room.hasSink ? _T("✓") : _T(""));
+    }
+}
 
+void CHomeDialog::OnAddRoom() {
+    CString name = GetTextSafe(*this, IDC_EDIT_ROOM_NAME_HOME);
+    CString areaStr = GetTextSafe(*this, IDC_EDIT_ROOM_AREA_HOME);
+    
+    if (name.IsEmpty()) {
+        MessageBox(_T("Oda adı boş olamaz!"), _T("Uyarı"), MB_ICONWARNING);
+        return;
+    }
+    
+    double area = 0.0;
+    if (!areaStr.IsEmpty()) {
+        area = _ttof(areaStr);
+    }
+    
+    bool hasShower = (BST_CHECKED == ::SendMessage(::GetDlgItem(*this, IDC_CHECK_ROOM_SHOWER_HOME), BM_GETCHECK, 0, 0));
+    bool hasSink = (BST_CHECKED == ::SendMessage(::GetDlgItem(*this, IDC_CHECK_ROOM_SINK_HOME), BM_GETCHECK, 0, 0));
+    
+    RoomInfo room(name, area, hasShower, hasSink);
+    m_rooms.push_back(room);
+    
+    RefreshRoomListView();
+    
+    // Temizle
+    SetTextSafe(*this, IDC_EDIT_ROOM_NAME_HOME, _T(""));
+    SetTextSafe(*this, IDC_EDIT_ROOM_AREA_HOME, _T(""));
+    ::SendMessage(::GetDlgItem(*this, IDC_CHECK_ROOM_SHOWER_HOME), BM_SETCHECK, BST_UNCHECKED, 0);
+    ::SendMessage(::GetDlgItem(*this, IDC_CHECK_ROOM_SINK_HOME), BM_SETCHECK, BST_UNCHECKED, 0);
+}
+
+void CHomeDialog::OnRemoveRoom() {
+    HWND hListView = ::GetDlgItem(*this, IDC_LISTVIEW_ROOMS_HOME);
+    if (!hListView) return;
+    
+    int selectedIndex = ListView_GetNextItem(hListView, -1, LVNI_SELECTED);
+    if (selectedIndex < 0 || selectedIndex >= (int)m_rooms.size()) {
+        MessageBox(_T("Silmek için bir oda seçin!"), _T("Uyarı"), MB_ICONWARNING);
+        return;
+    }
+    
+    m_rooms.erase(m_rooms.begin() + selectedIndex);
+    RefreshRoomListView();
+}
 
 
 // -----------------------------------------------------------------------------

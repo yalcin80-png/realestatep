@@ -4,7 +4,7 @@
 #include "resource.h"
 #include "HomeFeaturesPage.h"
 
-// 1. Temel Sayfa Sýnýfý
+// 1. Temel Sayfa Sï¿½nï¿½fï¿½
 class CVillaPageBase : public Win32xx::CDialog
 {
 public:
@@ -15,7 +15,7 @@ protected:
     virtual HBRUSH OnCtlColor(CDC& dc, HWND hwnd, UINT nCtlColor);
 };
 
-// 2. Tab Sayfalarý Ýçin Ara Sýnýf
+// 2. Tab Sayfalarï¿½ ï¿½ï¿½in Ara Sï¿½nï¿½f
 class CVillaPage : public CVillaPageBase
 {
 public:
@@ -23,7 +23,7 @@ public:
     void Create(Win32xx::CTab& tab);
 };
 
-// 3. Ana Villa Dialog Sýnýfý
+// 3. Ana Villa Dialog Sï¿½nï¿½fï¿½
 class CVillaDialog : public CVillaPageBase
 {
 public:
@@ -43,15 +43,24 @@ private:
     Win32xx::CFont m_font;
     Win32xx::CTab  m_tab;
 
-    // Sayfalar doðrudan ana diyaloða baðlý
+    // Sayfalar doï¿½rudan ana diyaloï¿½a baï¿½lï¿½
     CVillaPage        m_pageGenel;
     CVillaPage        m_pageNotlar;
-    CHomeFeaturesPage m_pageOzellik1; // Cephe / Ýç
-    CHomeFeaturesPage m_pageOzellik2; // Dýþ / Muhit / Diðer
+    CHomeFeaturesPage m_pageOzellik1; // Cephe / ï¿½ï¿½
+    CHomeFeaturesPage m_pageOzellik2; // Dï¿½ï¿½ / Muhit / Diï¿½er
 
     void InitCombos();
     void OnSize(int width, int height);
     void RecalcLayout();
     void ShowPage(int page);
     void LoadFromDB();
+    
+    // Dinamik Oda YÃ¶netimi
+    std::vector<RoomInfo> m_rooms;
+    void InitRoomControls();
+    void LoadRoomsFromJson(const CString& jsonStr);
+    CString SaveRoomsToJson();
+    void RefreshRoomListView();
+    void OnAddRoom();
+    void OnRemoveRoom();
 };

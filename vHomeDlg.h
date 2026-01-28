@@ -73,4 +73,13 @@ private:
     
     void InitBrowserIfNeeded();
     void FetchPropertyData(const CString& ilanNumarasi);
+    
+    // Dinamik Oda Yönetimi
+    std::vector<RoomInfo> m_rooms;
+    void InitRoomControls();
+    void LoadRoomsFromJson(const CString& jsonStr);
+    CString SaveRoomsToJson();
+    void RefreshRoomListView();
+    void OnAddRoom();
+    void OnRemoveRoom();
 };
