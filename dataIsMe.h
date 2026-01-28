@@ -1908,6 +1908,32 @@ struct RoomInfo {
         : name(n), area(a), hasShower(shower), hasSink(sink) {}
 };
 
+// JSON string escape helper
+inline std::wstring EscapeJsonString(const std::wstring& str) {
+    std::wstring result;
+    result.reserve(str.size());
+    for (wchar_t c : str) {
+        switch (c) {
+            case L'"':  result += L"\\\""; break;
+            case L'\\': result += L"\\\\"; break;
+            case L'\b': result += L"\\b"; break;
+            case L'\f': result += L"\\f"; break;
+            case L'\n': result += L"\\n"; break;
+            case L'\r': result += L"\\r"; break;
+            case L'\t': result += L"\\t"; break;
+            default:
+                if (c < 0x20) {
+                    wchar_t buf[8];
+                    swprintf_s(buf, L"\\u%04x", (int)c);
+                    result += buf;
+                } else {
+                    result += c;
+                }
+        }
+    }
+    return result;
+}
+
 // JSON'a dönüştür
 inline CString RoomsToJson(const std::vector<RoomInfo>& rooms) {
     if (rooms.empty()) return _T("[]");
@@ -1916,7 +1942,9 @@ inline CString RoomsToJson(const std::vector<RoomInfo>& rooms) {
     for (size_t i = 0; i < rooms.size(); ++i) {
         if (i > 0) result += L",";
         result += L"{";
-        result += L"\"name\":\"" + std::wstring(rooms[i].name) + L"\",";
+        
+        // Escape room name for JSON
+        result += L"\"name\":\"" + EscapeJsonString(std::wstring(rooms[i].name)) + L"\",";
         
         // Convert double to string
         wchar_t areaStr[32];

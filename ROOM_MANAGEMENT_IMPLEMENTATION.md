@@ -208,7 +208,9 @@ Oda detayları aşağıdaki JSON formatında saklanır:
 - Database şeması otomatik olarak `GetProperties` template'inden üretilir
 - `RoomDetails` MEMO tipinde bir kolon olarak database'e eklenir
 - JSON parsing için `nlohmann::json` kütüphanesi kullanılır (zaten projede mevcut)
-- Villa için `LoadRoomsFromJson()` basitleştirilmiş implementasyon içerir; gerekirse Home versiyonu ile aynı hale getirilebilir
+- Hem Home hem Villa için tam JSON parsing implementasyonu yapılmıştır
+- JSON string'ler özel karakterlere karşı escape edilir
+- Alan değerleri 0-10000 m² arasında sınırlanmıştır
 
 ## 🔧 Derleme ve Çalıştırma
 

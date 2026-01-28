@@ -275,25 +275,28 @@ void CVillaDialog::InitRoomControls() {
     // veya Resource.rc'de tanımlanmışsa yalnızca başlangıç değerlerini ayarla
     HWND hListView = m_pageGenel.GetDlgItem(IDC_LISTVIEW_ROOMS_VILLA);
     if (hListView) {
-        // ListView column başlıkları ekle
-        LVCOLUMN lvc{};
-        lvc.mask = LVCF_TEXT | LVCF_WIDTH;
-        
-        lvc.pszText = (LPTSTR)_T("Oda Adı");
-        lvc.cx = 120;
-        ListView_InsertColumn(hListView, 0, &lvc);
-        
-        lvc.pszText = (LPTSTR)_T("Alan (m²)");
-        lvc.cx = 80;
-        ListView_InsertColumn(hListView, 1, &lvc);
-        
-        lvc.pszText = (LPTSTR)_T("Duş");
-        lvc.cx = 50;
-        ListView_InsertColumn(hListView, 2, &lvc);
-        
-        lvc.pszText = (LPTSTR)_T("Lavabo");
-        lvc.cx = 60;
-        ListView_InsertColumn(hListView, 3, &lvc);
+        // Check if columns already added to prevent duplicates
+        if (ListView_GetColumn(hListView, 0, nullptr) == FALSE) {
+            // ListView column başlıkları ekle
+            LVCOLUMN lvc{};
+            lvc.mask = LVCF_TEXT | LVCF_WIDTH;
+            
+            lvc.pszText = (LPTSTR)_T("Oda Adı");
+            lvc.cx = 120;
+            ListView_InsertColumn(hListView, 0, &lvc);
+            
+            lvc.pszText = (LPTSTR)_T("Alan (m²)");
+            lvc.cx = 80;
+            ListView_InsertColumn(hListView, 1, &lvc);
+            
+            lvc.pszText = (LPTSTR)_T("Duş");
+            lvc.cx = 50;
+            ListView_InsertColumn(hListView, 2, &lvc);
+            
+            lvc.pszText = (LPTSTR)_T("Lavabo");
+            lvc.cx = 60;
+            ListView_InsertColumn(hListView, 3, &lvc);
+        }
     }
 }
 
@@ -339,8 +342,15 @@ void CVillaDialog::LoadRoomsFromJson(const CString& jsonStr) {
             }
         }
     }
+    catch (const std::exception& e) {
+        // JSON parse hatası - kullanıcıya bildir
+        CString msg;
+        msg.Format(_T("Oda detayları yüklenirken hata: %S"), e.what());
+        OutputDebugString(msg);  // Log for debugging
+    }
     catch (...) {
-        // JSON parse hatası - sessizce geç
+        // JSON parse hatası - unknown error
+        OutputDebugString(_T("Oda detayları yüklenirken bilinmeyen hata oluştu"));
     }
     
     RefreshRoomListView();
@@ -408,6 +418,11 @@ void CVillaDialog::OnAddRoom() {
     double area = 0.0;
     if (!areaStr.IsEmpty()) {
         area = _ttof(areaStr);
+        // Validate area is positive and reasonable
+        if (area < 0.0 || area > 10000.0) {
+            ::MessageBox(GetHwnd(), _T("Alan değeri 0 ile 10000 m² arasında olmalıdır!"), _T("Uyarı"), MB_ICONWARNING);
+            return;
+        }
     }
     
     HWND hShower = m_pageGenel.GetDlgItem(IDC_CHECK_ROOM_SHOWER_VILLA);
