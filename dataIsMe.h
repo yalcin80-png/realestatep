@@ -299,6 +299,12 @@ struct Home_cstr
     CString FeaturesAccessibility;
 
     // ============================================================
+    // DİNAMİK ODA YÖNETİMİ
+    // JSON array string -> [{"name":"Oda 1","area":15,"hasShower":true,"hasSink":true},...]
+    // ============================================================
+    CString RoomDetails;
+
+    // ============================================================
     // Mevcut genel alan (istersen ileride komple Features* buraya da dump edebilirsin)
     // ============================================================
     CString Attributes;
@@ -544,6 +550,12 @@ struct Villa_cstr
     CString sync_id;
     CString Updated_At;
     CString Deleted;
+
+    // ============================================================
+    // DİNAMİK ODA YÖNETİMİ
+    // JSON array string -> [{"name":"Oda 1","area":15,"hasShower":true,"hasSink":true},...]
+    // ============================================================
+    CString RoomDetails;
 
     CString Attributes;
     CString GetAttr(const std::string& key) const;
@@ -1879,4 +1891,57 @@ inline CString GetCategoryName(CustomerCategory cat)
     default:                      return _T("❓ Tanımsız Durum");
     }
 }
+
+// ============================================================================
+// DİNAMİK ODA YÖNETİMİ - JSON HELPER FUNCTIONS
+// ============================================================================
+
+// Oda yapısı
+struct RoomInfo {
+    CString name;        // Oda adı (Oda 1, Salon, Mutfak vb.)
+    double area;         // Alan (m²)
+    bool hasShower;      // Duş var mı?
+    bool hasSink;        // Lavabo var mı?
+
+    RoomInfo() : area(0.0), hasShower(false), hasSink(false) {}
+    RoomInfo(const CString& n, double a, bool shower, bool sink)
+        : name(n), area(a), hasShower(shower), hasSink(sink) {}
+};
+
+// JSON'a dönüştür
+inline CString RoomsToJson(const std::vector<RoomInfo>& rooms) {
+    if (rooms.empty()) return _T("[]");
+    
+    std::wstring result = L"[";
+    for (size_t i = 0; i < rooms.size(); ++i) {
+        if (i > 0) result += L",";
+        result += L"{";
+        result += L"\"name\":\"" + std::wstring(rooms[i].name) + L"\",";
+        
+        // Convert double to string
+        wchar_t areaStr[32];
+        swprintf_s(areaStr, L"%.2f", rooms[i].area);
+        result += L"\"area\":" + std::wstring(areaStr) + L",";
+        
+        result += L"\"hasShower\":" + std::wstring(rooms[i].hasShower ? L"true" : L"false") + L",";
+        result += L"\"hasSink\":" + std::wstring(rooms[i].hasSink ? L"true" : L"false");
+        result += L"}";
+    }
+    result += L"]";
+    return CString(result.c_str());
+}
+
+// JSON'dan oku
+inline std::vector<RoomInfo> JsonToRooms(const CString& jsonStr) {
+    std::vector<RoomInfo> rooms;
+    
+    if (jsonStr.IsEmpty() || jsonStr == _T("[]")) {
+        return rooms;
+    }
+    
+    // Basit JSON parsing (nlohmann::json kullanılacak gerçek implementasyonda)
+    // Şimdilik placeholder - gerçek kod vHomeDlg.cpp ve vVillaDlg.cpp'de olacak
+    return rooms;
+}
+
 #endif // !DATAISME_H
