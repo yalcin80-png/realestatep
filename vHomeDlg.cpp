@@ -106,10 +106,9 @@ BOOL CHomeDialog::OnInitDialog() {
                 m_featuresPage1.LoadFromMap(dataMap);
                 m_featuresPage2.LoadFromMap(dataMap);
                 
-                // Oda detaylarını yükle
-                if (dataMap.find(_T("RoomDetails")) != dataMap.end()) {
-                    LoadRoomsFromJson(dataMap[_T("RoomDetails")]);
-                }
+                // Özellik sayfalarını doldur
+                m_featuresPage1.LoadFromMap(dataMap);
+                m_featuresPage2.LoadFromMap(dataMap);
             }
             else {
                 MessageBox(_T("Kay�t bulunamad�!"), _T("Hata"), MB_ICONERROR);
@@ -117,7 +116,6 @@ BOOL CHomeDialog::OnInitDialog() {
         }
     }
     LayoutTabAndPages();
-    InitRoomControls();
     FixTabFonts();
     // Yeni kay�tta default olarak bo� �zellikler
     if (m_dialogMode == INEWUSER)
@@ -171,10 +169,7 @@ void CHomeDialog::OnOK() {
 
     uiData[_T("Updated_At")] = m_dbManager.GetCurrentIsoUtc();
 
-    // 5. Oda detaylarını JSON olarak ekle
-    uiData[_T("RoomDetails")] = SaveRoomsToJson();
-
-    // 6. Struct'a dönüştür ve Kaydet
+    // 5. Struct'a dönüştür ve Kaydet
     Home_cstr h;
     for (const auto& [key, val] : uiData) {
         DatabaseManager::SetFieldByStringName(h, key, val);
@@ -365,37 +360,86 @@ void CHomeDialog::OnLoadFromClipboard() {
 }
 
 void CHomeDialog::OnFetchListingClicked() {
-    // 1. İlan No'yu oku
+    // 1. Read listing number from control
     CString listingNo = GetTextSafe(*this, IDC_EDIT_ILAN_NO);
     if (listingNo.IsEmpty()) {
         MessageBox(_T("Lütfen bir İlan Numarası girin."), _T("Uyarı"), MB_ICONWARNING);
         return;
     }
 
-    // 2. Sahibinden URL'ini oluştur
-    CString url;
-    url.Format(_T("https://www.sahibinden.com/ilan/%s"), listingNo);
-
-    // 3. Kullanıcıya rehberlik et
-    CString msg;
-    msg.Format(_T("İlan No: %s\n")
-               _T("URL: %s\n\n")
-               _T("Otomatik veri çekme için iki seçeneğiniz var:\n\n")
-               _T("1. HAREKETSİZ İLANLAR İÇİN:\n")
-               _T("   • Bu dialogu kapatın\n")
-               _T("   • Ana menüden 'Araçlar > Sahibinden İçe Aktar' seçin\n")
-               _T("   • İlan URL'sini girin ve 'Veri Çek' butonuna tıklayın\n")
-               _T("   • Ardından bu dialogu açıp kaydı düzenleyin\n\n")
-               _T("2. EL İLE KOPYALA-YAPIŞTIR:\n")
-               _T("   • Sahibinden'den ilan metnini kopyalayın\n")
-               _T("   • 'Panodan Yükle' butonuna tıklayın\n\n")
-               _T("Gelecek sürümde bu buton otomatik çekme yapacak."),
-               listingNo, url);
+    // 2. Validate listing number format (numeric, reasonable length)
+    listingNo.Trim();
+    bool isValid = true;
+    if (listingNo.GetLength() < 5 || listingNo.GetLength() > 20) {
+        isValid = false;
+    }
+    for (int i = 0; i < listingNo.GetLength(); i++) {
+        if (!_istdigit(listingNo[i])) {
+            isValid = false;
+            break;
+        }
+    }
     
-    MessageBox(msg, _T("İlan Bilgisi Nasıl Alınır?"), MB_ICONINFORMATION);
+    if (!isValid) {
+        MessageBox(_T("İlan numarası geçersiz! Lütfen sadece rakam girin (örn: 1234567890)."), 
+                   _T("Uyarı"), MB_ICONWARNING);
+        return;
+    }
 
-    // TODO: Future enhancement - implement WebView2-based automatic fetching
-    // See: SahibindenImportDlg for reference implementation
+    // 3. Use SahibindenImporter to fetch data
+    SahibindenImporter importer;
+    auto result = importer.FetchByIlanNumarasi(listingNo);
+    
+    if (result.has_value()) {
+        // Successfully fetched data - populate dialog
+        const IlanBilgisi& ilan = result.value();
+        
+        // Create data map for UI binding
+        std::map<CString, CString> dataMap;
+        dataMap[_T("ListingNo")] = listingNo;
+        
+        if (!ilan.Baslik.empty()) {
+            // Parse title or other fields as needed
+            dataMap[_T("NoteGeneral")] = CString(ilan.Baslik.c_str());
+        }
+        if (!ilan.Fiyat.empty()) {
+            dataMap[_T("Price")] = CString(ilan.Fiyat.c_str());
+        }
+        if (!ilan.Aciklama.empty()) {
+            dataMap[_T("NoteInternal")] = CString(ilan.Aciklama.c_str());
+        }
+        
+        // Populate the dialog fields
+        m_dbManager.Bind_Data_To_UI(this, TABLE_NAME_HOME, dataMap);
+        
+        // Update features pages
+        m_featuresPage1.LoadFromMap(dataMap);
+        m_featuresPage2.LoadFromMap(dataMap);
+        
+        MessageBox(_T("İlan bilgileri başarıyla alındı!"), _T("Başarılı"), MB_ICONINFORMATION);
+    }
+    else {
+        // Failed to fetch - show guidance message
+        CString url;
+        url.Format(_T("https://www.sahibinden.com/ilan/%s"), listingNo);
+        
+        CString msg;
+        msg.Format(_T("İlan No: %s\n")
+                   _T("URL: %s\n\n")
+                   _T("Otomatik veri çekme için alternatif yöntemler:\n\n")
+                   _T("1. TOPLU İÇE AKTAR (Önerilen):\n")
+                   _T("   • Ana menüden 'Araçlar > Sahibinden İçe Aktar' seçin\n")
+                   _T("   • İlan URL'sini girin ve 'Veri Çek' butonuna tıklayın\n")
+                   _T("   • Veriler otomatik olarak kaydedilir\n\n")
+                   _T("2. PANODAN YAPIŞTIR:\n")
+                   _T("   • Sahibinden'den ilan detaylarını kopyalayın\n")
+                   _T("   • Bu dialogda 'Panodan Yükle' butonuna tıklayın\n\n")
+                   _T("Not: Doğrudan ilan numarası ile veri çekme özelliği\n")
+                   _T("şu anda SahibindenImporter tarafından desteklenmemektedir."),
+                   listingNo, url);
+        
+        MessageBox(msg, _T("İlan Bilgisi Nasıl Alınır?"), MB_ICONINFORMATION);
+    }
 }
 
 // ============================================================================
@@ -796,17 +840,6 @@ INT_PTR CHomeDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
         return TRUE;
     }
 
-    // Oda Yönetimi buton komutları
-    if (uMsg == WM_COMMAND && LOWORD(wParam) == IDC_BTN_ADD_ROOM_HOME) {
-        OnAddRoom();
-        return TRUE;
-    }
-
-    if (uMsg == WM_COMMAND && LOWORD(wParam) == IDC_BTN_REMOVE_ROOM_HOME) {
-        OnRemoveRoom();
-        return TRUE;
-    }
-
     if (uMsg == WM_NOTIFY)
     {
         NMHDR* hdr = (NMHDR*)lParam;
@@ -819,157 +852,6 @@ INT_PTR CHomeDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
             SwitchTab(sel);
             return TRUE;
         }
-    }
-    
-    // Handle timer for property data fetching
-    if (uMsg == WM_TIMER && wParam == kPropertyFetchTimerId) {
-        ::KillTimer(*this, kPropertyFetchTimerId);
-        
-        // Now fetch JSON and HTML from the loaded page
-        m_browser.GetListingJSON([this](std::wstring jsonText) {
-            // Got JSON, now get HTML
-            m_browser.GetSourceCode([this, jsonText](std::wstring htmlText) {
-                // Convert to UTF-8 using helper function
-                std::string utf8Json = WStringToUtf8(jsonText);
-                std::string utf8Html = WStringToUtf8(htmlText);
-                
-                // Parse JSON and HTML to extract property data
-                std::map<CString, CString> dataMap;
-                bool success = false;
-                
-                try {
-                    if (!utf8Json.empty() && utf8Json.size() > 10) {
-                        json j = json::parse(utf8Json);
-                        auto customVars = j.contains("customVars") ? BuildNameValueMapW(j["customVars"]) : std::unordered_map<std::wstring, std::wstring>{};
-                        auto dmpData = j.contains("dmpData") ? BuildNameValueMapW(j["dmpData"]) : std::unordered_map<std::wstring, std::wstring>{};
-                        
-                        // Extract data from JSON - populate dataMap with key property fields
-                        auto PickFirst = [&customVars, &dmpData](std::initializer_list<const wchar_t*> keysA, std::initializer_list<const wchar_t*> keysB) -> CString {
-                            for (auto k : keysA) {
-                                auto it = customVars.find(k);
-                                if (it != customVars.end() && !it->second.empty()) return CString(it->second.c_str());
-                            }
-                            for (auto k : keysB) {
-                                auto it = dmpData.find(k);
-                                if (it != dmpData.end() && !it->second.empty()) return CString(it->second.c_str());
-                            }
-                            return _T("");
-                        };
-                        
-                        dataMap[_T("ListingNo")] = PickFirst({ L"İlan No", L"ilan_no" }, { L"classifiedId", L"id" });
-                        dataMap[_T("ListingDate")] = PickFirst({ L"İlan Tarihi" }, { L"ilan_tarihi" });
-                        dataMap[_T("PropertyType")] = PickFirst({ L"Emlak Tipi" }, { L"cat0" });
-                        
-                        CString price = PickFirst({ L"ilan_fiyat", L"Fiyat" }, {});
-                        if (price.IsEmpty()) {
-                            CString n = PickFirst({}, { L"fiyat" });
-                            if (!n.IsEmpty()) price = n + _T(" TL");
-                        }
-                        dataMap[_T("Price")] = price;
-                        
-                        dataMap[_T("City")] = PickFirst({ L"loc2" }, { L"loc2" });
-                        dataMap[_T("District")] = PickFirst({ L"loc3" }, { L"loc3" });
-                        dataMap[_T("Neighborhood")] = PickFirst({ L"loc5" }, { L"loc5" });
-                        
-                        dataMap[_T("GrossArea")] = PickFirst({ L"m² (Brüt)", L"m2 (Brüt)" }, { L"m2_brut" });
-                        dataMap[_T("NetArea")] = PickFirst({ L"m² (Net)", L"m2 (Net)" }, { L"m2_net" });
-                        dataMap[_T("RoomCount")] = PickFirst({ L"Oda Sayısı" }, { L"oda_sayisi" });
-                        dataMap[_T("BuildingAge")] = PickFirst({ L"Bina Yaşı" }, { L"bina_yasi" });
-                        dataMap[_T("Floor")] = PickFirst({ L"Bulunduğu Kat" }, { L"bulundugu_kat" });
-                        dataMap[_T("TotalFloor")] = PickFirst({ L"Kat Sayısı" }, { L"kat_sayisi" });
-                        dataMap[_T("HeatingType")] = PickFirst({ L"Isıtma" }, { L"isitma" });
-                        dataMap[_T("BathroomCount")] = PickFirst({ L"Banyo Sayısı" }, { L"banyo_sayisi" });
-                        dataMap[_T("KitchenType")] = PickFirst({ L"Mutfak" }, { L"mutfak" });
-                        dataMap[_T("Balcony")] = PickFirst({ L"Balkon" }, { L"balkon" });
-                        dataMap[_T("Elevator")] = PickFirst({ L"Asansör" }, { L"asansor" });
-                        dataMap[_T("Parking")] = PickFirst({ L"Otopark" }, { L"otopark" });
-                        dataMap[_T("Furnished")] = PickFirst({ L"Eşyalı" }, { L"esyali" });
-                        dataMap[_T("UsageStatus")] = PickFirst({ L"Kullanım Durumu" }, { L"kullanim_durumu" });
-                        dataMap[_T("InSite")] = PickFirst({ L"Site İçerisinde" }, { L"site_icerisinde" });
-                        dataMap[_T("SiteName")] = PickFirst({ L"Site Adı" }, { L"site_adi" });
-                        dataMap[_T("Dues")] = PickFirst({ L"Aidat (TL)", L"Aidat" }, { L"aidat_tl" });
-                        dataMap[_T("CreditEligible")] = PickFirst({ L"Krediye Uygun" }, { L"krediye_uygun" });
-                        dataMap[_T("DeedStatus")] = PickFirst({ L"Tapu Durumu" }, { L"tapu_durumu" });
-                        dataMap[_T("SellerType")] = PickFirst({ L"Kimden" }, { L"kimden" });
-                        dataMap[_T("Swap")] = PickFirst({ L"Takas" }, {});
-                        
-                        dataMap[_T("WebsiteName")] = _T("sahibinden.com");
-                        CString url;
-                        url.Format(_T("https://www.sahibinden.com/ilan/%s"), (LPCTSTR)m_pendingIlanNumarasi);
-                        dataMap[_T("ListingURL")] = url;
-                        
-                        success = true;
-                    }
-                } catch (...) {
-                    success = false;
-                }
-                
-                // Populate dialog fields with the fetched data
-                if (success && !dataMap.empty()) {
-                    // Debug: Log how many fields were extracted
-                    CString debugMsg;
-                    debugMsg.Format(_T("Parsed %d fields from JSON"), (int)dataMap.size());
-                    SetDlgItemText(IDC_EDIT_NOTE_INTERNAL, debugMsg);
-                    
-                    // Use the database manager's bind method to populate UI
-                    m_dbManager.Bind_Data_To_UI(this, TABLE_NAME_HOME, dataMap);
-                    
-                    // Also manually set key fields as fallback
-                    if (!dataMap[_T("ListingNo")].IsEmpty())
-                        SetDlgItemText(IDC_EDIT_ILAN_NO, dataMap[_T("ListingNo")]);
-                    if (!dataMap[_T("Price")].IsEmpty())
-                        SetDlgItemText(ID_EDIT_FIYAT, dataMap[_T("Price")]);
-                    if (!dataMap[_T("City")].IsEmpty())
-                        SetDlgItemText(ID_COMBO_CITY, dataMap[_T("City")]);
-                    if (!dataMap[_T("District")].IsEmpty())
-                        SetDlgItemText(ID_COMBO_DISTRICT, dataMap[_T("District")]);
-                    if (!dataMap[_T("RoomCount")].IsEmpty())
-                        SetDlgItemText(ID_EDIT_ODASAYISI, dataMap[_T("RoomCount")]);
-                    if (!dataMap[_T("NetArea")].IsEmpty())
-                        SetDlgItemText(ID_EDIT_NETM2, dataMap[_T("NetArea")]);
-                    if (!dataMap[_T("GrossArea")].IsEmpty())
-                        SetDlgItemText(ID_EDIT_BRUTM2, dataMap[_T("GrossArea")]);
-                    if (!dataMap[_T("Floor")].IsEmpty())
-                        SetDlgItemText(ID_EDIT_KAT, dataMap[_T("Floor")]);
-                    if (!dataMap[_T("BuildingAge")].IsEmpty())
-                        SetDlgItemText(ID_EDIT_BINAYASI, dataMap[_T("BuildingAge")]);
-                    if (!dataMap[_T("ListingURL")].IsEmpty())
-                        SetDlgItemText(IDC_EDIT_URL, dataMap[_T("ListingURL")]);
-                    
-                    // Also populate feature pages if needed
-                    m_featuresPage1.LoadFromMap(dataMap);
-                    m_featuresPage2.LoadFromMap(dataMap);
-                    
-                    // Clear the progress message and show success
-                    SetDlgItemText(IDC_EDIT_NOTE_INTERNAL, _T(""));
-                    
-                    // Show detailed success message with sample data
-                    CString successMsg = _T("İlan bilgileri başarıyla alındı ve dialog'a dolduruldu!\n\n");
-                    if (!dataMap[_T("ListingNo")].IsEmpty())
-                        successMsg += _T("İlan No: ") + dataMap[_T("ListingNo")] + _T("\n");
-                    if (!dataMap[_T("City")].IsEmpty())
-                        successMsg += _T("Şehir: ") + dataMap[_T("City")] + _T("\n");
-                    if (!dataMap[_T("Price")].IsEmpty())
-                        successMsg += _T("Fiyat: ") + dataMap[_T("Price")] + _T("\n");
-                    successMsg += _T("\nKAYDET butonuna basarak veritabanına kaydedebilirsiniz.");
-                    
-                    MessageBox(successMsg, _T("Başarılı"), MB_ICONINFORMATION);
-                } else {
-                    SetDlgItemText(IDC_EDIT_NOTE_INTERNAL, _T(""));
-                    
-                    // More detailed error message
-                    CString errorMsg;
-                    if (!success) {
-                        errorMsg = _T("JSON parse hatası! İlan bilgileri alınamadı.");
-                    } else {
-                        errorMsg = _T("Veri boş geldi! Lütfen ilan numarasını kontrol edin.");
-                    }
-                    MessageBox(errorMsg, _T("Hata"), MB_ICONERROR);
-                }
-            });
-        });
-        
-        return TRUE;
     }
     
     switch (uMsg)
@@ -1070,227 +952,6 @@ void CHomeDialog::FixTabFonts()
 }
 
 // İlan Bilgilerini Al button click handler
-void CHomeDialog::OnIlanBilgileriniAl() {
-    CString ilanNumarasi;
-    GetDlgItemText(IDC_EDIT_ILANNUMARASI, ilanNumarasi);
-
-    if (ilanNumarasi.IsEmpty()) {
-        MessageBox(_T("İlan numarasını girmelisiniz!"), _T("Hata"), MB_ICONERROR);
-        return;
-    }
-
-    // Initialize browser if not already done
-    InitBrowserIfNeeded();
-    
-    // Store the property ID for later use
-    m_pendingIlanNumarasi = ilanNumarasi;
-    
-    // Start fetching process
-    FetchPropertyData(ilanNumarasi);
-}
-
-void CHomeDialog::InitBrowserIfNeeded() {
-    if (!m_browserInitialized) {
-        // Create a hidden browser window for fetching data
-        // Position it off-screen
-        RECT rc = { 
-            kBrowserOffScreenLeft, 
-            kBrowserOffScreenTop, 
-            kBrowserOffScreenRight, 
-            kBrowserOffScreenBottom 
-        };
-        m_browser.Create(*this, rc);
-        m_browser.InitBrowser(*this);
-        m_browserInitialized = true;
-    }
-}
-
-void CHomeDialog::FetchPropertyData(const CString& ilanNumarasi) {
-    // Construct the URL
-    CString url;
-    url.Format(_T("https://www.sahibinden.com/ilan/%s"), (LPCTSTR)ilanNumarasi);
-    
-    // Show progress message
-    SetDlgItemText(IDC_EDIT_NOTE_INTERNAL, _T("İlan bilgileri alınıyor..."));
-    
-    // Navigate to the property page
-    m_browser.Navigate(url);
-    
-    // Wait for page to load, then fetch JSON and HTML
-    ::SetTimer(*this, kPropertyFetchTimerId, kPropertyFetchDelayMs, nullptr);
-}
-
-// ============================================================================
-// DİNAMİK ODA YÖNETİMİ
-// ============================================================================
-
-void CHomeDialog::InitRoomControls() {
-    // Oda listesi için ListView yaratma burada yapılabilir
-    // veya Resource.rc'de tanımlanmışsa yalnızca başlangıç değerlerini ayarla
-    HWND hListView = ::GetDlgItem(*this, IDC_LISTVIEW_ROOMS_HOME);
-    if (hListView) {
-        // Check if columns already added to prevent duplicates
-        if (ListView_GetColumn(hListView, 0, nullptr) == FALSE) {
-            // ListView column başlıkları ekle
-            LVCOLUMN lvc{};
-            lvc.mask = LVCF_TEXT | LVCF_WIDTH;
-            
-            lvc.pszText = (LPTSTR)_T("Oda Adı");
-            lvc.cx = 120;
-            ListView_InsertColumn(hListView, 0, &lvc);
-            
-            lvc.pszText = (LPTSTR)_T("Alan (m²)");
-            lvc.cx = 80;
-            ListView_InsertColumn(hListView, 1, &lvc);
-            
-            lvc.pszText = (LPTSTR)_T("Duş");
-            lvc.cx = 50;
-            ListView_InsertColumn(hListView, 2, &lvc);
-            
-            lvc.pszText = (LPTSTR)_T("Lavabo");
-            lvc.cx = 60;
-            ListView_InsertColumn(hListView, 3, &lvc);
-        }
-    }
-}
-
-void CHomeDialog::LoadRoomsFromJson(const CString& jsonStr) {
-    m_rooms.clear();
-    
-    if (jsonStr.IsEmpty() || jsonStr == _T("[]")) {
-        return;
-    }
-    
-    try {
-        // UTF-8'e dönüştür
-        std::wstring wstr(jsonStr);
-        std::string utf8 = WStringToUtf8(wstr);
-        
-        // JSON parse
-        json j = json::parse(utf8);
-        
-        if (j.is_array()) {
-            for (const auto& item : j) {
-                if (!item.is_object()) continue;
-                
-                RoomInfo room;
-                
-                if (item.contains("name") && item["name"].is_string()) {
-                    std::string nameUtf8 = item["name"].get<std::string>();
-                    room.name = CString(Utf8ToWide(nameUtf8).c_str());
-                }
-                
-                if (item.contains("area") && item["area"].is_number()) {
-                    room.area = item["area"].get<double>();
-                }
-                
-                if (item.contains("hasShower") && item["hasShower"].is_boolean()) {
-                    room.hasShower = item["hasShower"].get<bool>();
-                }
-                
-                if (item.contains("hasSink") && item["hasSink"].is_boolean()) {
-                    room.hasSink = item["hasSink"].get<bool>();
-                }
-                
-                m_rooms.push_back(room);
-            }
-        }
-    }
-    catch (const std::exception& e) {
-        // JSON parse hatası - kullanıcıya bildir
-        CString msg;
-        msg.Format(_T("Oda detayları yüklenirken hata: %S"), e.what());
-        OutputDebugString(msg);  // Log for debugging
-    }
-    catch (...) {
-        // JSON parse hatası - unknown error
-        OutputDebugString(_T("Oda detayları yüklenirken bilinmeyen hata oluştu"));
-    }
-    
-    RefreshRoomListView();
-}
-
-CString CHomeDialog::SaveRoomsToJson() {
-    return RoomsToJson(m_rooms);
-}
-
-void CHomeDialog::RefreshRoomListView() {
-    HWND hListView = ::GetDlgItem(*this, IDC_LISTVIEW_ROOMS_HOME);
-    if (!hListView) return;
-    
-    ListView_DeleteAllItems(hListView);
-    
-    for (size_t i = 0; i < m_rooms.size(); ++i) {
-        const RoomInfo& room = m_rooms[i];
-        
-        LVITEM lvi{};
-        lvi.mask = LVIF_TEXT;
-        lvi.iItem = (int)i;
-        lvi.iSubItem = 0;
-        lvi.pszText = (LPTSTR)(LPCTSTR)room.name;
-        ListView_InsertItem(hListView, &lvi);
-        
-        // Alan
-        CString areaStr;
-        areaStr.Format(_T("%.2f"), room.area);
-        ListView_SetItemText(hListView, (int)i, 1, (LPTSTR)(LPCTSTR)areaStr);
-        
-        // Duş
-        ListView_SetItemText(hListView, (int)i, 2, room.hasShower ? _T("✓") : _T(""));
-        
-        // Lavabo
-        ListView_SetItemText(hListView, (int)i, 3, room.hasSink ? _T("✓") : _T(""));
-    }
-}
-
-void CHomeDialog::OnAddRoom() {
-    CString name = GetTextSafe(*this, IDC_EDIT_ROOM_NAME_HOME);
-    CString areaStr = GetTextSafe(*this, IDC_EDIT_ROOM_AREA_HOME);
-    
-    if (name.IsEmpty()) {
-        MessageBox(_T("Oda adı boş olamaz!"), _T("Uyarı"), MB_ICONWARNING);
-        return;
-    }
-    
-    double area = 0.0;
-    if (!areaStr.IsEmpty()) {
-        area = _ttof(areaStr);
-        // Validate area is positive and reasonable
-        if (area < 0.0 || area > 10000.0) {
-            MessageBox(_T("Alan değeri 0 ile 10000 m² arasında olmalıdır!"), _T("Uyarı"), MB_ICONWARNING);
-            return;
-        }
-    }
-    
-    bool hasShower = (BST_CHECKED == ::SendMessage(::GetDlgItem(*this, IDC_CHECK_ROOM_SHOWER_HOME), BM_GETCHECK, 0, 0));
-    bool hasSink = (BST_CHECKED == ::SendMessage(::GetDlgItem(*this, IDC_CHECK_ROOM_SINK_HOME), BM_GETCHECK, 0, 0));
-    
-    RoomInfo room(name, area, hasShower, hasSink);
-    m_rooms.push_back(room);
-    
-    RefreshRoomListView();
-    
-    // Temizle
-    SetTextSafe(*this, IDC_EDIT_ROOM_NAME_HOME, _T(""));
-    SetTextSafe(*this, IDC_EDIT_ROOM_AREA_HOME, _T(""));
-    ::SendMessage(::GetDlgItem(*this, IDC_CHECK_ROOM_SHOWER_HOME), BM_SETCHECK, BST_UNCHECKED, 0);
-    ::SendMessage(::GetDlgItem(*this, IDC_CHECK_ROOM_SINK_HOME), BM_SETCHECK, BST_UNCHECKED, 0);
-}
-
-void CHomeDialog::OnRemoveRoom() {
-    HWND hListView = ::GetDlgItem(*this, IDC_LISTVIEW_ROOMS_HOME);
-    if (!hListView) return;
-    
-    int selectedIndex = ListView_GetNextItem(hListView, -1, LVNI_SELECTED);
-    if (selectedIndex < 0 || selectedIndex >= (int)m_rooms.size()) {
-        MessageBox(_T("Silmek için bir oda seçin!"), _T("Uyarı"), MB_ICONWARNING);
-        return;
-    }
-    
-    m_rooms.erase(m_rooms.begin() + selectedIndex);
-    RefreshRoomListView();
-}
-
 
 // -----------------------------------------------------------------------------
 //  IMPORTANT BUILD NOTE (Linker unresolved externals fix)
