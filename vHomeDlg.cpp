@@ -304,12 +304,12 @@ void CHomeDialog::LayoutTabAndPages()
         m_featuresPage2.Create(m_hTab, rcBody, 6002, CHomeFeaturesPage::PageKind::Features2);
 
     // ? Sayfalar� tab i�inde konumland�r
-    ::SetWindowPos(m_featuresPage1, nullptr,
+    ::SetWindowPos(m_featuresPage1.GetHwnd(), nullptr,
         rcBody.left, rcBody.top,
         rcBody.right - rcBody.left, rcBody.bottom - rcBody.top,
         SWP_NOZORDER | SWP_NOACTIVATE);
 
-    ::SetWindowPos(m_featuresPage2, nullptr,
+    ::SetWindowPos(m_featuresPage2.GetHwnd(), nullptr,
         rcBody.left, rcBody.top,
         rcBody.right - rcBody.left, rcBody.bottom - rcBody.top,
         SWP_NOZORDER | SWP_NOACTIVATE);
@@ -328,8 +328,8 @@ void CHomeDialog::SwitchTab(int index)
         ::ShowWindow(h, showGeneral ? SW_SHOW : SW_HIDE);
 
     // Tab-1/2: �zellik sayfalar�
-    ::ShowWindow(m_featuresPage1, (index == 1) ? SW_SHOW : SW_HIDE);
-    ::ShowWindow(m_featuresPage2, (index == 2) ? SW_SHOW : SW_HIDE);
+    ::ShowWindow(m_featuresPage1.GetHwnd(), (index == 1) ? SW_SHOW : SW_HIDE);
+    ::ShowWindow(m_featuresPage2.GetHwnd(), (index == 2) ? SW_SHOW : SW_HIDE);
 
     if (m_hTab)
         TabCtrl_SetCurSel(m_hTab, index);
@@ -893,7 +893,7 @@ INT_PTR CHomeDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 void CHomeDialog::UpdateScrollInfo()
 {
     CRect rc;
-    rc =  GetClientRect();
+    GetClientRect(rc);
 
     // ��erik y�ksekli�ini hesapla (�rn: Kontrollerin bitti�i yer)
     // E�er kontrolleriniz dinamikse buray� 600-800 gibi bir de�er yapabilirsiniz.
