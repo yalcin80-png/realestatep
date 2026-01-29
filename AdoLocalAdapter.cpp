@@ -45,9 +45,9 @@ AdoLocalAdapter::AdoLocalAdapter(const std::string& connStr)
     }
     catch (const _com_error& e) {
         // HATA VARSA LOGLA!
-        std::string err = "[AdoLocalAdapter] Baglanti Hatasi: ";
+        std::string err = "[AdoLocalAdapter] Bağlantı Hatası: ";
         if (e.ErrorMessage()) err += (const char*)e.ErrorMessage();
-        err += "\nKullanilan String: " + m_connStr + "\n";
+        err += "\nKullanılan String: " + m_connStr + "\n";
         OutputDebugStringA(err.c_str());
     }
 }
