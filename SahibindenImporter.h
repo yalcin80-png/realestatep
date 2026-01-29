@@ -92,7 +92,6 @@ struct SahibindenListingPayload
 
     // ---- VILLA detay alanları (eksik olanlar) ----
     CString VILLA_OpenArea;        // "Açık Alan m²" / dmpData: acik_alan
-    CString VILLA_AcikAlanM2;      // Legacy open area mapping
     CString VILLA_TotalFloors;     // "Kat Sayısı" / dmpData: kat_sayisi
     CString VILLA_Balcony;         // "Balkon" / dmpData: balkon
     CString VILLA_Elevator;        // "Asansör" / dmpData: asansor
