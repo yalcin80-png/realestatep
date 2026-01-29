@@ -340,7 +340,7 @@ void CPreviewPanel::CreateStatusBar()
         
         // 3 bölümlü status bar: [Sayfa Bilgisi] [Zoom] [Hazır]
         int parts[] = { 200, 350, -1 };
-        m_StatusBar.SetParts(3, parts);
+        m_StatusBar.CreateParts(3, parts);
         
         UpdatePageInfo();
         UpdateZoomInfo();
@@ -686,7 +686,7 @@ void CPreviewPanel::OnPrint()
     if (!::PrintDlg(&pd))
         return; // Kullanıcı iptal etti
 
-    HDC hPrinterDC = printDlg.GetPrinterDC();
+    HDC hPrinterDC = pd.hDC;
     if (!hPrinterDC)
     {
         MessageBox(L"Yazıcı bağlantısı kurulamadı.", L"Hata", MB_ICONERROR);
@@ -817,13 +817,6 @@ void CPreviewPanel::OnPrint()
         
         if (m_StatusBar.IsWindow())
             m_StatusBar.SetPartText(2, L"Hata - Yazdırma iptal edildi");
-    }
-    catch (const std::exception& e)
-    {
-        CString msg;
-        msg.Format(L"Yazdırma sırasında kritik hata: %S", e.what());
-        MessageBox(msg, L"Hata", MB_ICONERROR);
-        printSuccess = false;
     }
     catch (...)
     {

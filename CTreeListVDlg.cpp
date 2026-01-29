@@ -823,80 +823,6 @@ COLORREF CMyTreeListView::GetColorForStatus(const CString& status)
 
 
 void CMyTreeListView::ChangePropertyStatus(HTREEITEM hItem, UINT cmdId)
-//{
-//    // 1. Bilgileri Al
-//    TLV_Row* row = GetRow(hItem);
-//    TLV_Category* cat = GetCategoryForRow(hItem);
-//    if (!row || !cat) return;
-//
-//    CString table = cat->name;
-//    CString code = row->key;
-//
-//    // Tabloya göre durum kolonu adı (HomeTbl'de 'Status', diğerlerinde 'Durum')
-//    //CString statusField = (table.CompareNoCase(TABLE_NAME_HOME) == 0) ? _T("Status") : _T("Durum");
-//    CString statusField = _T("Status");
-//    // 2. Yeni Durumu Belirle
-//    CString newStatus;
-//    switch (cmdId)
-//    {
-//    case IDM_STATUS_ACTIVE:     newStatus = _T("Aktif");       break;
-//    case IDM_STATUS_SOLD:       newStatus = _T("Satıldı");     break;
-//    case IDM_STATUS_PRICE_DOWN: newStatus = _T("Fiyat Düştü"); break;
-//    case IDM_STATUS_URGENT:     newStatus = _T("Acil");        break;
-//    case IDM_STATUS_PASSIVE:    newStatus = _T("Pasif");       break;
-//    default: return;
-//    }
-//
-//    // 3. Veritabanını Güncelle
-//    // UpdateFieldGlobal fonksiyonu Updated_At'i de günceller.
-//    DatabaseManager& db = DatabaseManager::GetInstance();
-//    // Cari Kod'u satırdan veya root'tan bulmamız lazım (önceki düzeltmelerdeki gibi)
-//    // Ama UpdateFieldGlobal sadece PK (code) ile çalışıyor, bu harika.
-//
-//    // Dikkat: UpdateFieldGlobal 5 parametre istiyor, codeField'ı bulmamız lazım.
-//    CString codeField; // (Bunu ResolveTableAndCode içindeki haritadan veya basit if-else ile alabilirsin)
-//    if (table.CompareNoCase(TABLE_NAME_HOME) == 0)
-//        codeField = _T("Home_Code");
-//    else if (table.CompareNoCase(TABLE_NAME_LAND) == 0)
-//        codeField = _T("Land_Code");
-//    else if (table.CompareNoCase(TABLE_NAME_FIELD) == 0)
-//        codeField = _T("Field_Code");
-//    else if (table.CompareNoCase(TABLE_NAME_VINEYARD) == 0)
-//        codeField = _T("Vineyard_Code");
-//    else if (table.CompareNoCase(TABLE_NAME_VILLA) == 0)
-//        codeField = _T("Villa_Code");
-//    else if (table.CompareNoCase(TABLE_NAME_COMMERCIAL) == 0)
-//        codeField = _T("Commercial_Code");
-//    else if (table.CompareNoCase(TABLE_NAME_CUSTOMER) == 0)
-//        codeField = _T("Cari_Kod");
-//    // ... diğerleri ...
-//    else codeField = table + _T("_Code"); // Basit varsayım
-//
-//    if (db.UpdateFieldGlobal(table, codeField, code, statusField, newStatus))
-//    {
-//        // 4. Görünümü Anında Güncelle (Reload yapmadan!)
-//        COLORREF newColor = GetColorForStatus(newStatus);
-//        COLORREF newTextColor = (newStatus == _T("Satıldı")) ? RGB(100, 100, 100) : CLR_DEFAULT;
-//
-//        SetRowColor(hItem, newTextColor, newColor);
-//
-//        // Durum metnini de güncellemek istersen (Hangi kolonda olduğunu bilmek lazım)
-//        // Örneğin Status kolonu 46. sıradaysa:
-//        // SetSubItemText(hItem, 46, newStatus);
-//
-//        Invalidate(); // Boyamayı tetikle
-//    }
-//    else
-//    {
-//        MessageBox(_T("Durum güncellenemedi."), _T("Hata"), MB_ICONERROR);
-//    }
-//}
-
-
-
-
-
-void CMyTreeListView::ChangePropertyStatus(HTREEITEM hItem, UINT cmdId)
 {
     // 1. Bilgileri Al
     TLV_Row* row = GetRow(hItem);
@@ -1438,7 +1364,7 @@ void CMyTreeListView::TriggerAction(int btnType, HTREEITEM hItem)
 // --------------------------------------------------------
 // Gradient Arka Plan Çizimi - Görsel İyileştirme
 // --------------------------------------------------------
-void DrawGradientRect(HDC hdc, const RECT& rect, COLORREF colorStart, COLORREF colorEnd, bool vertical = false)
+void DrawGradientRect(HDC hdc, const RECT& rect, COLORREF colorStart, COLORREF colorEnd, bool vertical)
 {
     TRIVERTEX vertex[2];
     vertex[0].x = rect.left;
@@ -1460,7 +1386,7 @@ void DrawGradientRect(HDC hdc, const RECT& rect, COLORREF colorStart, COLORREF c
 }
 
 // Durum renklerine göre gradient oluşturur (daha yumuşak görünüm)
-COLORREF LightenColor(COLORREF color, int amount = 40)
+COLORREF LightenColor(COLORREF color, int amount)
 {
     int r = min(255, GetRValue(color) + amount);
     int g = min(255, GetGValue(color) + amount);

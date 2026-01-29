@@ -87,8 +87,12 @@ struct SahibindenListingPayload
     CString CAR_FromWho;           // "Kimden" / dmpData: kimden
     CString CAR_Cat2;              // customVars cat2 ("Otomobil"), dmpData cat2
 
+    CString CAR_Title;             // İlan başlığı (og:title / title)
+    CString CAR_VehicleCondition;  // "Araç Durumu" / dmpData: arac_durumu
+
     // ---- VILLA detay alanları (eksik olanlar) ----
     CString VILLA_OpenArea;        // "Açık Alan m²" / dmpData: acik_alan
+    CString VILLA_AcikAlanM2;      // Legacy open area mapping
     CString VILLA_TotalFloors;     // "Kat Sayısı" / dmpData: kat_sayisi
     CString VILLA_Balcony;         // "Balkon" / dmpData: balkon
     CString VILLA_Elevator;        // "Asansör" / dmpData: asansor
