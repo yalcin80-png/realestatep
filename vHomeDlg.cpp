@@ -892,8 +892,7 @@ INT_PTR CHomeDialog::DialogProc(UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
 void CHomeDialog::UpdateScrollInfo()
 {
-    CRect rc;
-    GetClientRect(rc);
+    CRect rc = GetClientRect();
 
     // ��erik y�ksekli�ini hesapla (�rn: Kontrollerin bitti�i yer)
     // E�er kontrolleriniz dinamikse buray� 600-800 gibi bir de�er yapabilirsiniz.
@@ -945,10 +944,10 @@ void CHomeDialog::FixTabFonts()
 
     // 3) Tab sayfalar�na ve i�indeki dinamik kontrollere uygula
     if (m_featuresPage1.GetHwnd())
-        ApplyFontRecursive(m_featuresPage1, m_hUiFont);
+        ApplyFontRecursive(m_featuresPage1.GetHwnd(), m_hUiFont);
 
     if (m_featuresPage2.GetHwnd())
-        ApplyFontRecursive(m_featuresPage2, m_hUiFont);
+        ApplyFontRecursive(m_featuresPage2.GetHwnd(), m_hUiFont);
 }
 
 // İlan Bilgilerini Al button click handler
