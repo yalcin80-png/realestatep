@@ -713,6 +713,8 @@ void CPreviewPanel::OnPrint()
 
     bool printSuccess = true;
     bool aborted = false;
+    int startPage = 1;
+    int endPage = 1;
 
     try
     {
@@ -726,8 +728,8 @@ void CPreviewPanel::OnPrint()
         int totalPages = layout->GetTotalPages();
 
         // Hangi sayfaları yazdıracağımızı belirle
-        int startPage = 1;
-        int endPage = totalPages;
+        startPage = 1;
+        endPage = totalPages;
         
         if (pd.Flags & PD_PAGENUMS)
         {
