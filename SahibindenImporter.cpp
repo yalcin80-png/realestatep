@@ -349,10 +349,13 @@ bool SahibindenImporter::ImportFromJsonAndHtmlString(const CString& url,
 
             // ---- VILLA-specific fields ----
             // Açık Alan m² is specific to villas (outdoor area)
-            payload.VILLA_AcikAlanM2 = PickFirstW(
-                customVars, { L"Açık Alan m²", L"Açık Alan", L"Acik Alan m2" },
-                dmpData, { L"acik_alan_m2", L"outdoor_area" }
-            );
+            if (payload.VILLA_OpenArea.IsEmpty())
+            {
+                payload.VILLA_OpenArea = PickFirstW(
+                    customVars, { L"Açık Alan m²", L"Açık Alan", L"Acik Alan m2" },
+                    dmpData, { L"acik_alan_m2", L"outdoor_area" }
+                );
+            }
 
             // ---- CAR/VEHICLE (Araç) teknik alanlar ----
             // Brand and model information
