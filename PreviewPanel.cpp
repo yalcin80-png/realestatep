@@ -340,7 +340,7 @@ void CPreviewPanel::CreateStatusBar()
         
         // 3 bölümlü status bar: [Sayfa Bilgisi] [Zoom] [Hazır]
         int parts[] = { 200, 350, -1 };
-        m_StatusBar.SetParts(3, parts);
+        m_StatusBar.CreateParts(3, parts);
         
         UpdatePageInfo();
         UpdateZoomInfo();
@@ -686,7 +686,7 @@ void CPreviewPanel::OnPrint()
     if (!::PrintDlg(&pd))
         return; // Kullanıcı iptal etti
 
-    HDC hPrinterDC = printDlg.GetPrinterDC();
+    HDC hPrinterDC = pd.hDC;
     if (!hPrinterDC)
     {
         MessageBox(L"Yazıcı bağlantısı kurulamadı.", L"Hata", MB_ICONERROR);
@@ -712,6 +712,7 @@ void CPreviewPanel::OnPrint()
     }
 
     bool printSuccess = true;
+    bool aborted = false;
 
     try
     {
@@ -796,20 +797,12 @@ void CPreviewPanel::OnPrint()
             }
         }
 
-        dcPrinter.EndDoc();
-        
-        // Başarı mesajı
-        CString successMsg;
-        successMsg.Format(L"Yazdırma tamamlandı.\n%d sayfa başarıyla yazdırıldı.", 
-                         endPage - startPage + 1);
-        MessageBox(successMsg, L"Bilgi", MB_ICONINFORMATION);
-        
-        if (m_StatusBar.IsWindow())
-            m_StatusBar.SetPartText(2, L"Hazır");
     }
     catch (const std::exception& e)
     {
         dcPrinter.AbortDoc();
+        aborted = true;
+        printSuccess = false;
         
         CString errMsg;
         errMsg.Format(L"Yazdırma sırasında hata oluştu:\n%S", e.what());
@@ -818,27 +811,34 @@ void CPreviewPanel::OnPrint()
         if (m_StatusBar.IsWindow())
             m_StatusBar.SetPartText(2, L"Hata - Yazdırma iptal edildi");
     }
-    catch (const std::exception& e)
-    {
-        CString msg;
-        msg.Format(L"Yazdırma sırasında kritik hata: %S", e.what());
-        MessageBox(msg, L"Hata", MB_ICONERROR);
-        printSuccess = false;
-    }
     catch (...)
     {
+        dcPrinter.AbortDoc();
+        aborted = true;
         MessageBox(L"Yazdırma sırasında bilinmeyen hata oluştu.", L"Hata", MB_ICONERROR);
         printSuccess = false;
+
+        if (m_StatusBar.IsWindow())
+            m_StatusBar.SetPartText(2, L"Hata - Yazdırma iptal edildi");
     }
 
-    dcPrinter.EndDoc();
-    
-    if (printSuccess)
+    if (!aborted)
     {
-        MessageBox(L"Yazdırma tamamlandı.", L"Bilgi", MB_OK | MB_ICONINFORMATION);
-    }
-    else
-    {
-        MessageBox(L"Yazdırma tamamlanamadı. Bazı sayfalar yazdırılamış olabilir.", L"Uyarı", MB_OK | MB_ICONWARNING);
+        dcPrinter.EndDoc();
+
+        if (printSuccess)
+        {
+            CString successMsg;
+            successMsg.Format(L"Yazdırma tamamlandı.\n%d sayfa başarıyla yazdırıldı.",
+                             endPage - startPage + 1);
+            MessageBox(successMsg, L"Bilgi", MB_ICONINFORMATION);
+
+            if (m_StatusBar.IsWindow())
+                m_StatusBar.SetPartText(2, L"Hazır");
+        }
+        else
+        {
+            MessageBox(L"Yazdırma tamamlanamadı. Bazı sayfalar yazdırılamış olabilir.", L"Uyarı", MB_OK | MB_ICONWARNING);
+        }
     }
 }

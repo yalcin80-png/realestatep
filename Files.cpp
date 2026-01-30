@@ -504,7 +504,7 @@ void CListCustomerView::SetColumns()
 
     for (int i = 0; i < _countof(headers); ++i)
     {
-        column.pszText = const_cast<LPWSTR>(headers[i]);
+        column.pszText = const_cast<LPWSTR>(static_cast<LPCWSTR>(headers[i]));
 
         // ✅ DÜZELTME BURADA:
         if (m_viewMode == VIEW_MODE_CARD)

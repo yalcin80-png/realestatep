@@ -332,7 +332,7 @@ void CListCustomerView::SetColumns()
 
     for (int i = 0; i < _countof(headers); ++i)
     {
-    column.pszText = const_cast<LPWSTR>(headers[i]);
+    column.pszText = const_cast<LPWSTR>(static_cast<LPCWSTR>(headers[i]));
     column.cx = (i == 0) ? DpiScaleInt(3) : DpiScaleInt(100);
 InsertColumn(i, column);
     }
